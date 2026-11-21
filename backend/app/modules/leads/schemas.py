@@ -43,23 +43,38 @@ class LeadOut(BaseModel):
     notes: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class SalesLeadSummary(LeadOut):
     customer: LeadCustomer
 
 
-class LeadDetail(LeadOut):
+class LeadDetail(SalesLeadSummary):
     calls: list[LeadCallOut]
 
 
-class LeadCreate(BaseModel):
+class LeadFields(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    customer_id: int
     source: LeadSource
     requested_kw: float = Field(gt=0, le=100)
     system_type: SystemType
     subsidy_interest: bool = False
     assigned_to_id: int | None = None
     notes: str | None = None
+
+
+class LeadCreate(LeadFields):
+    customer_id: int = Field(gt=0)
+
+
+class NewCustomerLead(LeadFields):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    name: str = Field(min_length=1, max_length=120)
+    phone: str = Field(pattern=r"^[6-9]\d{9}$")
+    address: str = Field(min_length=1)
+    pincode: str = Field(pattern=r"^\d{6}$")
 
 
 class LeadUpdate(BaseModel):

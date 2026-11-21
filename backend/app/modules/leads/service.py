@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import AppError
 from app.modules.leads.models import Lead, LeadCall, LeadSource, LeadStatus, LEAD_TRANSITIONS
-from app.modules.leads.schemas import LeadCallCreate, LeadCreate, LeadLostIn, LeadUpdate
-from app.modules.users.models import User
+from app.modules.leads.schemas import LeadCallCreate, LeadCreate, LeadLostIn, LeadUpdate, NewCustomerLead
+from app.modules.users.models import Customer, User
 
 
 def _get_or_404(db: Session, lead_id: int) -> Lead:
@@ -22,8 +22,6 @@ def list_leads(
     q: str | None = None,
     status: str | None = None,
 ) -> tuple[list[Lead], int]:
-    from app.modules.users.models import Customer
-
     stmt = select(Lead).options(selectinload(Lead.customer))
     if status:
         try:
@@ -46,9 +44,17 @@ def get_lead(db: Session, lead_id: int) -> Lead:
     return _get_or_404(db, lead_id)
 
 
-def create_lead(db: Session, data: LeadCreate, actor: User) -> Lead:
+def create_lead(db: Session, data: LeadCreate | NewCustomerLead, actor: User) -> Lead:
+    if isinstance(data, NewCustomerLead):
+        customer = Customer(name=data.name, phone=data.phone, address=data.address, pincode=data.pincode)
+        db.add(customer)
+        db.flush()
+    else:
+        customer = db.get(Customer, data.customer_id)
+        if customer is None:
+            raise AppError("CUSTOMER_NOT_FOUND", "Customer not found.", 404)
     lead = Lead(
-        customer_id=data.customer_id,
+        customer_id=customer.id,
         source=data.source,
         requested_kw=data.requested_kw,
         system_type=data.system_type,

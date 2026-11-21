@@ -406,3 +406,31 @@ def test_core_chain_lead_to_warranty_and_ticket_billing(workspace):
             assert len(invoice["lines"]) == 2
     with Session(stage.engine) as db:
         assert db.scalar(select(func.count()).select_from(Invoice)) == 1
+
+
+def test_lead_inbox_and_call_history_follow_role(workspace):
+    client = workspace.client
+    path = f"{API}/leads/{workspace.lead_id}"
+    response = client.post(
+        path + "/calls", json={"outcome": "Visit requested", "called_at": datetime.now(UTC).isoformat()}
+    )
+    assert response.status_code == 201
+    assert client.get(path).json()["data"]["calls"][0]["outcome"] == "Visit requested"
+    row = client.get(f"{API}/leads").json()["data"][0]
+    assert row["customer"]["name"] == "Customer"
+    assert "calls" not in row
+    workspace.state.actor = workspace.actors["support"]
+    assert "customer" not in client.get(path).json()["data"]
+    assert "calls" not in client.get(path).json()["data"]
+
+
+def test_sales_can_enter_a_phone_enquiry_for_a_new_customer(workspace):
+    client = workspace.client
+    response = client.post(f"{API}/leads", json={
+        "name": "Phone enquiry", "phone": "9876543210", "address": "24 Solar Lane",
+        "pincode": "144411", "source": "CALL", "requested_kw": 3, "system_type": "ON_GRID",
+    })
+    assert response.status_code == 201
+    detail = client.get(f"{API}/leads/{response.json()['data']['id']}").json()["data"]
+    assert detail["customer"]["phone"] == "9876543210"
+    assert detail["source"] == "CALL"
