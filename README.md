@@ -38,7 +38,9 @@ python3.11 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-Create the database tables and load demo users, catalog, stock, and surveys, then start the API. Run both commands in the activated Python 3.11 environment from `backend/`.
+For a QA rehearsal, set `DATABASE_URL` to a disposable database. It takes precedence over the individual PostgreSQL settings.
+
+Create the database tables and load demo users, catalog, stock, historical warranties and surveys, then start the API. Run both commands in the activated Python 3.11 environment from `backend/`.
 
 ```sh
 python -m seed.seed_all
