@@ -16,7 +16,7 @@ from app.core.deps import get_current_user
 from app.core.errors import AppError
 from app.core.numbering import seed_counters
 from app.main import create_app
-from app.modules.billing.models import Invoice
+from app.modules.billing.models import Invoice, Payment
 from app.modules.catalog.models import Package
 from app.modules.deliveries.models import Delivery, DeliveryScan
 from app.modules.installs import service as installs
@@ -161,6 +161,24 @@ def add_order(stage, quote_number):
 def record_advance(stage, order_id, paise):
     response = stage.client.post(f"{API}/orders/{order_id}/payments", json={"amount_paise": paise, "method": "UPI"})
     assert response.status_code == 200, response.text
+
+
+def test_report_counts_cash_once_on_receipt_date(workspace):
+    stage = workspace
+    order_id = add_order(stage, "QT-CASH")
+    record_advance(stage, order_id, 31)
+    url = f"{API}/reports/summary?range=today"
+    assert stage.client.get(url).json()["data"]["collected_paise"] == 31
+    invoice = stage.client.post(f"{API}/invoices", json={"order_id": order_id}).json()["data"]
+    data = stage.client.get(url).json()["data"]
+    assert (data["collected_paise"], data["outstanding_paise"]) == (31, 70)
+    with Session(stage.engine) as db:
+        db.get(Invoice, invoice["id"]).issued_at -= timedelta(days=45)
+        db.scalar(select(Payment).where(Payment.order_id == order_id)).paid_at -= timedelta(days=45)
+        db.commit()
+    record_advance(stage, order_id, 70)
+    data = stage.client.get(url).json()["data"]
+    assert (data["revenue_paise"], data["collected_paise"], data["outstanding_paise"]) == (0, 70, 0)
 
 
 def test_r4_and_r5_confirm_at_exact_threshold_once(workspace):
@@ -349,6 +367,13 @@ def test_core_chain_lead_to_warranty_and_ticket_billing(workspace):
     delivered = client.post(f"{path}/deliver")
     assert delivered.status_code == 200, delivered.text
     assert delivered.json()["data"]["status"] == "DELIVERED"
+    stage.state.actor = stage.actors["director"]
+    profit = client.get(f"{API}/reports/profit-per-job").json()["data"]
+    job = next(row for row in profit if row["order_id"] == order["id"])
+    # Each physical unit, both scanned and bulk, was received at 100 paise.
+    expected_parts = sum(line["qty_required"] * 100 for line in lines)
+    assert job["parts_paise"] == expected_parts
+    assert job["profit_paise"] == -expected_parts
     stage.state.actor = stage.actors["support"]
     warranty_ids = []
     for sku, number in serials:

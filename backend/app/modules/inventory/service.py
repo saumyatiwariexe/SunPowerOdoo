@@ -79,7 +79,7 @@ def receive_stock(db: Session, payload: StockReceiveIn) -> dict:
     db.add(movement)
 
     try:
-        product = adjust_stock(db, product.id, payload.qty, payload.purchase_cost_paise or None)
+        product = adjust_stock(db, product.id, payload.qty, payload.purchase_cost_paise)
     except IntegrityError as exc:
         constraint = getattr(getattr(exc.orig, "diag", None), "constraint_name", None)
         if constraint == "ix_serial_units_serial_no" or "UNIQUE constraint failed: serial_units.serial_no" in str(exc.orig):
