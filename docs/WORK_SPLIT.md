@@ -1,6 +1,6 @@
 # Work Split (4 people, Python backend)
 
-Fill in names: Person A = ______ , B = ______ , C = ______ , D = ______.
+Fill in names: Person A = Saumya , B = Samar , C = Ekam , D =Pranjal.
 Assign by strength: A = strongest Python/DB person. D = strongest frontend/UI person.
 
 Split principle: each person owns **backend module + its frontend pages** end to end. Each defines their own models in `modules/<name>/models.py`, so nobody waits for a shared schema.
