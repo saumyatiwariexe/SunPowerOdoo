@@ -11,6 +11,7 @@ export function devServerConfig(mode, envDir = repoRoot) {
   return {
     port: 5173,
     strictPort: true,
+    allowedHosts: process.env.TUNNEL_HOST ? [process.env.TUNNEL_HOST] : [],
     proxy: {
       '/api': {
         target: env.API_PROXY_TARGET || 'http://127.0.0.1:8000',
