@@ -38,14 +38,15 @@ python3.11 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-Once the application entry points land, run these commands in the activated backend environment from `backend/`.
+Start the API in the activated Python 3.11 environment from `backend/`.
 
 ```sh
-python -m seed.seed_all
 python -m uvicorn app.main:app --reload
 ```
 
-The API will be available at `http://localhost:8000`, with interactive docs at `/docs`. In a separate terminal, run the frontend from `frontend/` once its package manifest is in place.
+The API is available at `http://localhost:8000`, with interactive docs at `/docs` and a process health check at `/api/v1/public/health`. Once the team seed entry point lands, run `python -m seed.seed_all` from `backend/` to create tables and demo data for authenticated requests.
+
+In a separate terminal, run the frontend from `frontend/` once its package manifest is in place.
 
 ```sh
 npm install
@@ -54,7 +55,7 @@ npm run dev
 
 ## Tests
 
-From `backend/`, run `python -m pytest` in the Python 3.11 environment once tests are in place. The core workflow tests use in-memory SQLite.
+From `backend/`, run `python -m pytest` in the Python 3.11 environment. The backend tests use in-memory SQLite.
 
 ## Demo logins (created by the seed)
 | Role | Email |
