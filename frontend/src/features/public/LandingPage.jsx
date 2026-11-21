@@ -52,6 +52,28 @@ export default function LandingPage() {
           <li><AppIcon name="calendar" size={28} /><strong>Install &amp; switch on</strong><p>Your crew fits and tests the system.</p></li>
         </ol>
       </section>
+      <section className="public-explainer" aria-labelledby="system-title">
+        <div className="section-line">
+          <div>
+            <h2 id="system-title">Which system suits your home?</h2>
+            <p className="section-help">Your roof, electricity use and connection determine the right setup. A site survey helps us confirm the details before quoting.</p>
+          </div>
+        </div>
+        <div className="system-comparison">
+          <article>
+            <AppIcon name="leaf" size={30} />
+            <h3>On-grid</h3>
+            <p>Solar panels work alongside your electricity connection. A good starting point when grid power is available and you want to offset daytime usage.</p>
+            <Link className="text-link" to="/enquiry?type=ON_GRID">Ask about on-grid systems →</Link>
+          </article>
+          <article>
+            <AppIcon name="survey" size={30} />
+            <h3>Off-grid</h3>
+            <p>A system with battery storage for places that need power beyond the grid connection. Battery size and equipment depend on the loads you need to run.</p>
+            <Link className="text-link" to="/enquiry?type=OFF_GRID">Ask about off-grid systems →</Link>
+          </article>
+        </div>
+      </section>
       <section id="packages" className="public-packages">
         <div className="section-line">
           <div><h2>Find your solar fit.</h2><p className="section-help">Choose a system and explore available capacities.</p></div>
@@ -92,15 +114,40 @@ export default function LandingPage() {
             </p>
           )}
         </State>
+        <p className="package-context">Prices shown are package starting points. Your final quote follows a roof survey and lists the equipment and installation work for your site.</p>
+      </section>
+      <section className="public-aftercare" aria-labelledby="aftercare-title">
+        <div>
+          <h2 id="aftercare-title">From the first call to support after installation.</h2>
+          <p>We keep your project details together so the team can follow each handoff.</p>
+          <Link className="button primary" to="/enquiry">Start an enquiry →</Link>
+        </div>
+        <ul>
+          <li><strong>Roof check before quoting</strong><span>A surveyor records the roof direction, tilt, available area and cable route.</span></li>
+          <li><strong>Clear equipment list</strong><span>Your quote shows the selected system and the parts required for it.</span></li>
+          <li><strong>Installation record</strong><span>The crew records site photos, system size, test completion and your acceptance.</span></li>
+          <li><strong>Serial-based service</strong><span>Delivered equipment is recorded by serial number so support can check its warranty later.</span></li>
+        </ul>
       </section>
       <section className="subsidy-note">
         <div>
           <h2>Planning to apply for a subsidy?</h2>
-          <p>Include your interest in PM Surya Ghar when you request a quote.</p>
+          <p>Tell us when you enquire. The team can track the paperwork alongside your installation. Eligibility and approval depend on the applicable scheme.</p>
         </div>
         <Link className="button" to="/enquiry?subsidy=true">
           Ask about subsidies ↗
         </Link>
+      </section>
+      <section className="public-faq" aria-labelledby="faq-title">
+        <div>
+          <h2 id="faq-title">Before you enquire</h2>
+          <p>A few details help us prepare for the first conversation.</p>
+        </div>
+        <div>
+          <details><summary>Do I need to know my roof measurements?</summary><p>No. Share your address, approximate system size if you have one, and a contact number. The team can assess the roof during the survey.</p></details>
+          <details><summary>When will I receive a final quote?</summary><p>After the roof survey is reviewed and approved, Sales can prepare a quote with the package and itemised parts.</p></details>
+          <details><summary>What happens after installation?</summary><p>Delivery records start the equipment warranties. You can contact support with a serial number or phone number if you need service.</p></details>
+        </div>
       </section>
     </PublicFrame>
   )
