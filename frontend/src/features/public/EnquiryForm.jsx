@@ -221,7 +221,7 @@ export default function EnquiryForm() {
             <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-teal-600"
                 checked={form.subsidy_interest}
                 onChange={(e) => set('subsidy_interest', e.target.checked)}
                 disabled={loading}
@@ -234,7 +234,7 @@ export default function EnquiryForm() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-amber-500 py-3 font-bold text-white hover:bg-amber-600 disabled:opacity-60 transition-colors"
+              className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 font-bold text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
             >
               {loading && <Spinner size="sm" />}
               {loading ? 'Submitting…' : 'Submit Enquiry'}

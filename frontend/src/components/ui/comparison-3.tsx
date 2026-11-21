@@ -24,17 +24,17 @@ const money = (paise: number) => new Intl.NumberFormat("en-IN", {
 
 function Cell({ value, highlighted }: { value: CellValue; highlighted: boolean }) {
   if (typeof value === "boolean") return value ? (
-    <span className={cn("mx-auto flex size-6 items-center justify-center rounded-full", highlighted ? "bg-blue-700" : "bg-slate-700")}>
+    <span className={cn("mx-auto flex size-6 items-center justify-center rounded-full", highlighted ? "bg-brand-600" : "bg-brand-800")}>
       <RiCheckLine className="size-4 text-white" aria-hidden="true" />
       <span className="sr-only">Included</span>
     </span>
   ) : (
-    <span className="mx-auto flex size-6 items-center justify-center rounded-full bg-slate-100">
-      <RiCloseLine className="size-4 text-slate-500" aria-hidden="true" />
+    <span className="mx-auto flex size-6 items-center justify-center rounded-full bg-brand-100">
+      <RiCloseLine className="size-4 text-brand-700" aria-hidden="true" />
       <span className="sr-only">Not included</span>
     </span>
   )
-  return <span className={cn("font-medium", highlighted ? "text-slate-900" : "text-slate-600")}>{value}</span>
+  return <span className={cn("font-medium", highlighted ? "text-brand-900" : "text-brand-700")}>{value}</span>
 }
 
 const quantity = (plan: SolarPackage, category: string): CellValue => {

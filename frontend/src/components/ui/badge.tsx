@@ -3,7 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva("inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold", {
-  variants: { variant: { default: "border-blue-700 bg-blue-700 text-white", outline: "border-blue-200 bg-blue-50 text-blue-800" } },
+  variants: { variant: { default: "border-brand-600 bg-brand-600 text-white", outline: "border-brand-200 bg-brand-50 text-brand-800" } },
   defaultVariants: { variant: "outline" },
 })
 type BadgeProps = React.HTMLAttributes<HTMLSpanElement> & VariantProps<typeof badgeVariants>

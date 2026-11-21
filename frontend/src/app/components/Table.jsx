@@ -27,7 +27,7 @@ export default function Table({ columns, data, loading, error, onRetry, emptyTit
         {onRetry && (
           <button
             onClick={onRetry}
-            className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600"
+            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >
             Retry
           </button>
@@ -80,7 +80,7 @@ export default function Table({ columns, data, loading, error, onRetry, emptyTit
             <tr
               key={row.id ?? ri}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
-              className={`${onRowClick ? 'cursor-pointer hover:bg-amber-50' : ''} transition-colors`}
+              className={`${onRowClick ? 'cursor-pointer hover:bg-brand-50' : ''} transition-colors`}
             >
               {columns.map(col => (
                 <td key={col.key} className={`px-4 py-3 text-sm text-slate-700 ${col.className ?? ''}`}>

@@ -3,7 +3,7 @@ import React, { useState, useCallback } from 'react'
 const STYLES = {
   success: 'bg-emerald-50 border-emerald-400 text-emerald-800',
   error:   'bg-red-50 border-red-400 text-red-800',
-  info:    'bg-blue-50 border-blue-400 text-blue-800',
+  info:    'bg-teal-50 border-teal-600 text-teal-700',
 }
 
 function ToastItem({ id, type, message, onDismiss }) {
