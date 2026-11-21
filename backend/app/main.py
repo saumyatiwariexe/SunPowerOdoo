@@ -14,7 +14,7 @@ from app.modules.orders.router import router as orders_router
 from app.modules.quotes.router import router as quotes_router
 from app.modules.surveys.router import router as surveys_router
 from app.modules.tickets.router import router as tickets_router
-from app.modules.users.router import router as auth_router
+from app.modules.users.router import router as auth_router, staff_router
 from app.modules.users.service import LoginRateLimiter
 from app.modules.warranty.router import router as warranty_router
 
@@ -40,6 +40,7 @@ def create_app() -> FastAPI:
         return {"data": {"status": "ok"}}
 
     api.include_router(auth_router)
+    api.include_router(staff_router)
     api.include_router(billing_router)
     api.include_router(catalog_router)
     api.include_router(deliveries_router)

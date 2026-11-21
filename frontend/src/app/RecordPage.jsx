@@ -5,13 +5,14 @@ import Modal from './components/Modal'
 import { DataTable, Heading, Pager, State, Status, useRecord } from './records'
 import { api } from './api'
 
-export function Collection({ title, path, columns, create, empty, tools, children }) {
+export function Collection({ title, path, columns, create, empty, tools, actions, children }) {
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
   const result = useRecord(path + (path.includes('?') ? '&' : '?') + 'page=' + page)
   return (
     <>
       <Heading title={title}>
+        {actions}
         {create && (
           <button className="button primary" onClick={() => setOpen(true)}>
             {create.label}

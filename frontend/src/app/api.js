@@ -73,3 +73,7 @@ export function formatPaise(paise) {
     maximumFractionDigits: 2,
   }).format((paise ?? 0) / 100)
 }
+
+export function changedFields(original, values) {
+  return Object.fromEntries(Object.entries(values).filter(([key, value]) => value !== original[key]))
+}

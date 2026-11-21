@@ -20,6 +20,7 @@ export const sections = [
       ['subsidy', 'Subsidy claims', 'leaf', ['SALES', 'DIRECTOR']],
     ],
   ],
+  ['Administration', [['staff', 'Staff accounts', 'people', ['DIRECTOR']]]],
   [
     'Service desk',
     [

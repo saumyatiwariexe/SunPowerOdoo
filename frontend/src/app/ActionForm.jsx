@@ -37,7 +37,7 @@ export default function ActionForm({
         if (f.type === 'money') values[f.name] = paise(text)
         else if (f.type === 'number') values[f.name] = Number(text)
         else if (f.type === 'datetime-local') values[f.name] = new Date(text).toISOString()
-        else values[f.name] = typeof text === 'string' ? text.trim() : text
+        else values[f.name] = typeof text === 'string' && f.type !== 'password' ? text.trim() : text
       }
       const response = await action(values)
       form.reset()
@@ -61,6 +61,7 @@ export default function ActionForm({
           required: !f.optional,
           defaultValue: initial[f.name] ?? f.value ?? '',
           maxLength: f.maxLength,
+          autoComplete: f.autoComplete,
           disabled: busy,
         }
         return (

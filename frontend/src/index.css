@@ -1143,3 +1143,18 @@ details[open] > summary {
   font-size: 0.75rem;
   color: var(--muted);
 }
+
+.bom-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6rem auto;
+  align-items: end;
+  gap: 10px;
+}
+@media (max-width: 560px) {
+  .bom-line {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .bom-line > :first-child {
+    grid-column: 1 / -1;
+  }
+}

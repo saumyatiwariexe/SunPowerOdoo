@@ -8,6 +8,7 @@ import { ToastContainer } from './components/Toast'
 import LandingPage from '../features/public/LandingPage'
 import EnquiryForm from '../features/public/EnquiryForm'
 import ThankYouPage from '../features/public/ThankYouPage'
+import { StaffPage, StaffDetail } from '../features/auth/StaffPage'
 import ProfilePage from '../features/auth/ProfilePage'
 import LoginPage from '../features/auth/LoginPage'
 import DashboardPage from '../features/dashboard/DashboardPage'
@@ -17,7 +18,7 @@ import { SurveysPage, SurveyDetail } from '../features/surveys/SurveysPage'
 import { InstallsPage, InstallDetail } from '../features/installs/InstallsPage'
 import { QuotesPage, QuoteDetail } from '../features/quotes/QuotesPage'
 import { OrdersPage, OrderDetail } from '../features/orders/OrdersPage'
-import { CatalogPage, PackageDetail } from '../features/catalog/CatalogPage'
+import { CatalogPage, PackageDetail, ProductDetail, NewPackage } from '../features/catalog/CatalogPage'
 import { SubsidyPage, SubsidyDetail } from '../features/subsidy/SubsidyPage'
 import { DeliveriesPage, DeliveryDetail } from '../features/deliveries/DeliveriesPage'
 import InventoryPage from '../features/inventory/InventoryPage'
@@ -27,12 +28,13 @@ import LookupPage from '../features/lookup/LookupPage'
 
 const pages = {
   dashboard: [DashboardPage],
+  staff: [StaffPage, StaffDetail],
   leads: [LeadsPage, LeadDetailPage],
   surveys: [SurveysPage, SurveyDetail],
   installs: [InstallsPage, InstallDetail],
   quotes: [QuotesPage, QuoteDetail],
   orders: [OrdersPage, OrderDetail],
-  catalog: [CatalogPage, PackageDetail],
+  catalog: [CatalogPage, PackageDetail, ProductDetail, NewPackage],
   subsidy: [SubsidyPage, SubsidyDetail],
   inventory: [InventoryPage],
   deliveries: [DeliveriesPage, DeliveryDetail],
@@ -78,6 +80,22 @@ export default function App() {
                 }),
               ),
             )}
+            <Route
+              path="/catalog/packages/new"
+              element={
+                <ProtectedRoute roles={['DIRECTOR']}>
+                  <NewPackage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/catalog/products/:id"
+              element={
+                <ProtectedRoute roles={['DIRECTOR', 'SALES']}>
+                  <ProductDetail />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/users" element={<ProfilePage />} />
             <Route path="*" element={<WorkspaceHome />} />
           </Route>

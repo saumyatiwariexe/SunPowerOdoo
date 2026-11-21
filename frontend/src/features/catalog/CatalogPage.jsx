@@ -1,40 +1,50 @@
-import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { api, formatPaise } from '../../app/api'
+import React from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { api, changedFields, formatPaise } from '../../app/api'
 import { useAuth } from '../../app/AuthContext'
 import ActionForm from '../../app/ActionForm'
-import { DataTable, Facts } from '../../app/records'
+import { DataTable, Facts, Heading, State } from '../../app/records'
 import { Collection, RecordDetail } from '../../app/RecordPage'
+import PackageEditor, { useProducts } from './PackageEditor'
+
+const productFields = [
+  { name: 'sku', label: 'SKU', maxLength: 64 },
+  { name: 'name', label: 'Product name', maxLength: 120 },
+  {
+    name: 'category',
+    label: 'Category',
+    options: [
+      'PANEL',
+      'INVERTER',
+      'BATTERY',
+      'CHARGE_CONTROLLER',
+      'STAND',
+      'WIRING',
+      'SAFETY',
+      'SERVICE',
+    ],
+  },
+  { name: 'unit', label: 'Unit', maxLength: 24 },
+  { name: 'price_paise', label: 'Sale price (₹)', type: 'money' },
+  { name: 'cost_paise', label: 'Cost (₹)', type: 'money' },
+  { name: 'tracks_serial', label: 'Track serial numbers', options: ['No', 'Yes'] },
+  { name: 'warranty_months', label: 'Warranty months', type: 'number', min: 1, optional: true },
+  { name: 'reorder_level', label: 'Reorder level', type: 'number', min: 0, value: 0 },
+]
+const productPath = (id) => '/catalog/products/' + id
+const productPayload = (v) => ({
+  ...v,
+  tracks_serial: v.tracks_serial === 'Yes',
+  warranty_months: v.warranty_months ?? null,
+})
 
 export function CatalogPage() {
-  const [products, setProducts] = useState(false)
+  const [params, setParams] = useSearchParams()
+  const products = params.get('tab') === 'products'
   const { currentUser } = useAuth()
-  const canEdit = currentUser.role === 'DIRECTOR'
+  const navigate = useNavigate()
+  const director = currentUser.role === 'DIRECTOR'
   const path = products ? '/products' : '/packages'
-  const fields = [
-    { name: 'sku', label: 'SKU' },
-    { name: 'name', label: 'Product name' },
-    {
-      name: 'category',
-      label: 'Category',
-      options: [
-        'PANEL',
-        'INVERTER',
-        'BATTERY',
-        'CHARGE_CONTROLLER',
-        'STAND',
-        'WIRING',
-        'SAFETY',
-        'SERVICE',
-      ],
-    },
-    { name: 'unit', label: 'Unit' },
-    { name: 'price_paise', label: 'Sale price (₹)', type: 'money' },
-    { name: 'cost_paise', label: 'Cost (₹)', type: 'money' },
-    { name: 'tracks_serial', label: 'Track serial numbers', options: ['No', 'Yes'] },
-    { name: 'warranty_months', label: 'Warranty months', type: 'number', min: 1, optional: true },
-  ]
-  const label = products ? 'Products' : 'Packages'
   return (
     <Collection
       key={path}
@@ -42,19 +52,32 @@ export function CatalogPage() {
       path={path}
       tools={
         <div className="view-tabs">
-          {['Packages', 'Products'].map((x) => (
-            <button key={x} aria-pressed={label === x} onClick={() => setProducts(x === 'Products')}>
-              {x}
+          {['Packages', 'Products'].map((label) => (
+            <button
+              key={label}
+              aria-pressed={products === (label === 'Products')}
+              onClick={() => setParams(label === 'Products' ? { tab: 'products' } : {})}
+            >
+              {label}
             </button>
           ))}
         </div>
       }
+      actions={
+        !products &&
+        director && (
+          <Link className="button primary" to="/catalog/packages/new">
+            Create package
+          </Link>
+        )
+      }
       create={
         products &&
-        canEdit && {
+        director && {
           label: 'Add product',
-          fields,
-          action: (v) => api.post(path, { ...v, tracks_serial: v.tracks_serial === 'Yes' }),
+          fields: productFields,
+          action: (v) => api.post(path, productPayload(v)),
+          onDone: (r) => navigate(productPath(r.id)),
         }
       }
       columns={[
@@ -62,14 +85,11 @@ export function CatalogPage() {
         [
           'name',
           products ? 'Product' : 'Package',
-          (r) =>
-            products ? (
-              r.name
-            ) : (
-              <Link className="text-link" to={'/catalog/' + r.id}>
-                {r.name}
-              </Link>
-            ),
+          (r) => (
+            <Link className="text-link" to={products ? productPath(r.id) : '/catalog/' + r.id}>
+              {r.name}
+            </Link>
+          ),
         ],
         ...(products
           ? [
@@ -80,55 +100,48 @@ export function CatalogPage() {
           : [
               ['system_type', 'System'],
               ['capacity_kw', 'Capacity (kW)'],
+              ['active', 'Active'],
             ]),
         ['price_paise', 'Price'],
       ]}
     />
   )
 }
-export function PackageDetail() {
+
+export function ProductDetail() {
   const { currentUser } = useAuth()
   return (
-    <RecordDetail title="Catalog" base="/packages" singular="Package" backTo="/catalog">
+    <RecordDetail title="Products" base="/products" backTo="/catalog?tab=products" singular="Product">
       {(r, path, reload) => (
         <>
           <h2>{r.name}</h2>
           <Facts
             items={[
-              ['Capacity', r.capacity_kw ? r.capacity_kw + ' kW' : 'Hardware only'],
-              ['Price', formatPaise(r.price_paise)],
-              ['Active', r.active ? 'Yes' : 'No'],
-            ]}
-          />
-          <h2>Bill of materials</h2>
-          <DataTable
-            rows={r.items}
-            columns={[
-              ['product_id', 'Product ID'],
-              ['qty', 'Quantity'],
+              ['SKU', r.sku],
+              ['Category', r.category],
+              ['Unit', r.unit],
+              ['On hand', r.on_hand],
+              ['Sale price', formatPaise(r.price_paise)],
+              ['Cost', formatPaise(r.cost_paise)],
+              ['Serial tracking', r.tracks_serial ? 'Yes' : 'No'],
+              ['Warranty (months)', r.warranty_months],
+              ['Reorder level', r.reorder_level],
             ]}
           />
           {currentUser.role === 'DIRECTOR' && (
             <details>
-              <summary>Edit bill of materials</summary>
+              <summary>Edit product</summary>
               <ActionForm
-                submit="Save bill of materials"
-                fields={[
-                  {
-                    name: 'items',
-                    label: 'Product ID and quantity, one pair per line (e.g. 12, 2)',
-                    type: 'textarea',
-                    value: r.items.map((i) => i.product_id + ', ' + i.qty).join('\n'),
-                  },
-                ]}
-                action={(v) => {
-                  const items = v.items.split(/\r?\n/).map((line) => {
-                    const match = /^\s*(\d+)\s*,\s*(\d+)\s*$/.exec(line)
-                    if (!match) throw new Error('Enter a product ID and quantity on each line.')
-                    return { product_id: Number(match[1]), qty: Number(match[2]) }
-                  })
-                  return api.patch(path, { items })
+                submit="Save product"
+                primary
+                fields={productFields}
+                initial={{
+                  ...r,
+                  price_paise: (r.price_paise / 100).toFixed(2),
+                  cost_paise: (r.cost_paise / 100).toFixed(2),
+                  tracks_serial: r.tracks_serial ? 'Yes' : 'No',
                 }}
+                action={(v) => api.patch(path, changedFields(r, productPayload(v)))}
                 onDone={reload}
               />
             </details>
@@ -136,5 +149,88 @@ export function PackageDetail() {
         </>
       )}
     </RecordDetail>
+  )
+}
+
+export function NewPackage() {
+  const products = useProducts()
+  const navigate = useNavigate()
+  return (
+    <>
+      <Link className="back" to="/catalog">
+        ← Catalog
+      </Link>
+      <Heading title="Create package" />
+      <PackageEditor products={products} onDone={(r) => navigate('/catalog/' + r.id)} />
+    </>
+  )
+}
+
+export function PackageDetail() {
+  const { currentUser } = useAuth()
+  return (
+    <RecordDetail title="Catalog" base="/packages" singular="Package" backTo="/catalog">
+      {(r, path, reload) => (
+        <PackageView key={r.id} row={r} reload={reload} director={currentUser.role === 'DIRECTOR'} />
+      )}
+    </RecordDetail>
+  )
+}
+
+function PackageView({ row: r, director, reload }) {
+  const [editing, setEditing] = React.useState(false)
+  const products = useProducts()
+  const names = new Map((products.data || []).map((product) => [product.id, product.name]))
+  return (
+    <>
+      <h2>{r.name}</h2>
+      <Facts
+        items={[
+          ['System type', r.system_type?.replace('_', '-') || 'Hardware only'],
+          ['Capacity', r.capacity_kw ? r.capacity_kw + ' kW' : '—'],
+          ['Price', formatPaise(r.price_paise)],
+          ['Active', r.active ? 'Yes' : 'No'],
+        ]}
+      />
+      {editing ? (
+        <PackageEditor
+          products={products}
+          initial={r}
+          onCancel={() => setEditing(false)}
+          onDone={() => {
+            setEditing(false)
+            reload()
+          }}
+        />
+      ) : (
+        <>
+          <h2>Bill of materials</h2>
+          <State resource={products}>
+            <DataTable
+              rows={r.items}
+              columns={[
+                [
+                  'product_id',
+                  'Product',
+                  (line) => (
+                    <Link className="text-link" to={productPath(line.product_id)}>
+                      {names.get(line.product_id) || 'Product #' + line.product_id}
+                    </Link>
+                  ),
+                ],
+                ['qty', 'Quantity'],
+              ]}
+            />
+          </State>
+          {director && (
+            <div className="actions">
+              <button className="button" onClick={() => setEditing(true)}>
+                Edit package
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </>
   )
 }

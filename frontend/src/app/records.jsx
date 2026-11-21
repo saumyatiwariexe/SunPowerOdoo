@@ -2,14 +2,13 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { api, formatPaise } from './api'
 import { human } from './navigation'
 
-export function useRecord(path) {
+export function useRecord(path, load = api.get) {
   const [version, setVersion] = useState(0)
   const [result, setResult] = useState({})
   useEffect(() => {
     if (!path) return
     let current = true
-    api
-      .get(path)
+    load(path)
       .then((response) => {
         if (current) setResult({ path, version, ...response })
       })
@@ -19,7 +18,7 @@ export function useRecord(path) {
     return () => {
       current = false
     }
-  }, [path, version])
+  }, [path, version, load])
   const reload = useCallback(() => setVersion((v) => v + 1), [])
   return {
     ...(result.path === path && result.version === version ? result : { loading: !!path }),
