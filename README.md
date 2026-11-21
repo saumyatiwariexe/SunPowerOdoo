@@ -58,9 +58,30 @@ npm install
 npm run dev
 ```
 
+### Restarting without changing your data
+
+Keep using the same checkout and root `.env`. `DATABASE_URL`, when set, overrides
+the `POSTGRES_*` values. Different databases have different enquiries, even when
+they use the same demo logins. A normal API restart does not delete records.
+
+The frontend reads `API_PROXY_TARGET` from the root `.env` on startup. For an API
+running on port 8102, set `API_PROXY_TARGET=http://127.0.0.1:8102` there, then start
+the API with `python -m uvicorn app.main:app --reload --port 8102` and the frontend
+with `npm run dev -- --port 5275`. Use that same frontend URL each time. A shell
+`API_PROXY_TARGET` overrides the file, so remove stale shell overrides if needed.
+Vite fails when its requested port is occupied instead of opening another copy.
+
+Run the seed only for initial setup or deliberate QA preparation, not on every
+restart. Keep the existing Docker database volume; `docker compose down -v`
+deletes it. Switching to a QA database does not migrate existing customer data.
+
 ## Tests
 
 From `backend/`, run `python -m pytest` in the Python 3.11 environment. The backend tests use in-memory SQLite.
+
+The persistence regression uses a temporary SQLite file and two separate Python
+processes. From `frontend/`, run `node --test tests/dev-server.test.js` to check
+that the API target survives a fresh frontend session.
 
 ## Demo logins (created by the seed)
 | Role | Email |
