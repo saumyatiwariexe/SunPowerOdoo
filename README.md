@@ -7,27 +7,54 @@ One platform for a rooftop solar company: enquiry -> survey -> quote -> order ->
 Stack: Python (FastAPI, SQLAlchemy, PostgreSQL) + React (Vite, Tailwind).
 
 ## Docs
-- [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md): stack, architecture, contracts, business rules, state machines, conventions
-- [DATA_MODEL.md](DATA_MODEL.md): tables, fields, profit and warranty formulas
-- [FEATURES_BY_ROLE.md](FEATURES_BY_ROLE.md): screens, endpoints, owners per role, demo script
-- [WORK_SPLIT.md](WORK_SPLIT.md): who builds what, timeline, merge rules
+- [SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md): stack, architecture, contracts, business rules, state machines, conventions
+- [DATA_MODEL.md](docs/DATA_MODEL.md): tables, fields, profit and warranty formulas
+- [FEATURES_BY_ROLE.md](docs/FEATURES_BY_ROLE.md): screens, endpoints, owners per role, demo script
+- [WORK_SPLIT.md](docs/WORK_SPLIT.md): who builds what, timeline, merge rules
 
-## Run (Person A fills in exact commands)
+## Local setup
+
+From the repo root, create `.env` once with `Copy-Item .env.example .env` in PowerShell or `cp .env.example .env` in Bash. Start PostgreSQL with Docker Compose.
+
+```sh
+docker compose up -d --wait db
 ```
-cp .env.example .env
-docker compose up -d                      # PostgreSQL
+
+Set `JWT_SECRET` in `.env` before starting the API. Generate a value with `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
+
+Install backend dependencies in a Python 3.11 virtual environment from `backend/`.
+
+```powershell
 cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-python -m seed.seed_all                   # creates tables + demo data
-uvicorn app.main:app --reload             # API on :8000, docs at /docs
-cd ../frontend && npm install && npm run dev
+py -3.11 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+If the Windows `py` launcher does not find Python 3.11 and you have uv, use `uv venv --python 3.11 --seed .venv` from `backend/` in place of the `py` command.
+
+```bash
+cd backend
+python3.11 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+```
+
+Once the application entry points land, run these commands in the activated backend environment from `backend/`.
+
+```sh
+python -m seed.seed_all
+python -m uvicorn app.main:app --reload
+```
+
+The API will be available at `http://localhost:8000`, with interactive docs at `/docs`. In a separate terminal, run the frontend from `frontend/` once its package manifest is in place.
+
+```sh
+npm install
+npm run dev
 ```
 
 ## Tests
-```
-cd backend && pytest
-```
+
+From `backend/`, run `python -m pytest` in the Python 3.11 environment once tests are in place. The core workflow tests use in-memory SQLite.
 
 ## Demo logins (created by the seed)
 | Role | Email |
