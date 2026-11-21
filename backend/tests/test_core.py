@@ -89,7 +89,7 @@ def test_login_current_user_role_and_logout(client):
 
 def test_login_validation_does_not_echo_credentials(client):
     response = client.post(LOGIN, json={"email": "sales@sunpower.test", "password": PASSWORD, "x": 1})
-    assert response.status_code == 400
+    assert response.status_code == 422
     assert response.json()["error"]["details"][0]["loc"] == ["body", "x"]
     assert PASSWORD not in response.text
 

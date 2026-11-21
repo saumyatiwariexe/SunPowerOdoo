@@ -104,7 +104,7 @@ def test_product_roles_money_search_and_unique_sku(client):
     bad = client.patch(f"{PRODUCTS}/{product['id']}", json={"price_paise": 910_000.0})
     assert bad.status_code == 400
     bad_stock = client.patch(f"{PRODUCTS}/{product['id']}", json={"on_hand": 9})
-    assert bad_stock.status_code == 400
+    assert bad_stock.status_code == 422
     updated = client.patch(f"{PRODUCTS}/{product['id']}", json={"warranty_months": None, "price_paise": 910_000})
     assert updated.status_code == 200
     assert updated.json()["data"]["warranty_months"] is None

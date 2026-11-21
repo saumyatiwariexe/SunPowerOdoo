@@ -121,7 +121,7 @@ def test_r2_and_r3_real_survey_approval_then_package_quote(workspace):
     assert approved.json()["data"]["status"] == "APPROVED"
     assert approved.json()["data"]["photos"][0]["url"] == photo_url
     assert client.get(photo_url).content == PNG
-    assert client.post(f"{API}/quotes", json={**payload, "lines": []}).status_code == 400
+    assert client.post(f"{API}/quotes", json={**payload, "lines": []}).status_code == 422
 
     response = client.post(f"{API}/quotes", json={**payload, "subsidy_paise": 100})
     assert response.status_code == 201, response.text
@@ -337,7 +337,9 @@ def test_r12_requires_photo_signature_and_valid_times(workspace):
         "system_kw": "3", "signed_by_name": "Customer",
     }
     signature = {"signature": ("signature.png", PNG, "image/png")}
-    assert stage.client.post(f"{root}/complete", data=proof).status_code == 400
+    missing = stage.client.post(f"{root}/complete", data=proof)
+    assert missing.status_code == 409
+    assert missing.json()["error"]["code"] == "INSTALL_PROOF_REQUIRED"
     no_photo = stage.client.post(f"{root}/complete", data=proof, files=signature)
     assert no_photo.status_code == 409, no_photo.text
     assert no_photo.json()["error"]["code"] == "INSTALL_PHOTO_REQUIRED"
@@ -582,3 +584,12 @@ def test_master_seed_provisions_historical_warranties_once(workspace, monkeypatc
     with Session(workspace.engine) as db:
         assert check_by_serial(db, "INV-OLD-2024-001")["warranty_id"] == serial["warranty_id"]
         assert db.scalar(select(func.count()).select_from(Invoice)) == 1
+
+
+@pytest.mark.parametrize("field", ["phone", "pincode"])
+def test_public_enquiry_rejects_bad_contact_details(workspace, field):
+    payload = {"name": "QA", "phone": "9999999999", "address": "Site", "pincode": "560001",
+               "requested_kw": 3, "system_type": "ON_GRID", field: "bad"}
+    result = workspace.client.post(f"{API}/public/enquiries", json=payload)
+    assert result.status_code == 422
+    assert result.json()["error"]["details"][0]["loc"] == ["body", field]

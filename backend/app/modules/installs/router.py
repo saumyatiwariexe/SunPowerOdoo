@@ -89,7 +89,7 @@ async def photos(
     return {"data": data}
 
 
-@router.post("/{job_id}/complete")
+@router.post("/{job_id}/complete", name="complete_installation")
 async def complete(
     job_id: JobId, db: Db, actor: Crew, settings: AppSettings,
     payload: Annotated[InstallCompletionForm, Form(media_type="multipart/form-data")],

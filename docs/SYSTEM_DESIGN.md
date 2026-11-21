@@ -102,6 +102,7 @@ Fixed now so people can stub each other.
 - Success: `{ "data": ..., "meta": { "page", "page_size", "total" } }`
 - Error: `{ "error": { "code": "RULE_VIOLATION", "message": "...", "details": [...] } }`
 - Codes: 400 validation, 401 not logged in, 403 wrong role, 404 not found, 409 rule or state violation.
+- Unknown request fields and invalid enquiry phone or pincode return 422. Missing installation completion proof returns 409. Validation errors include field locations.
 - Lists accept `page`, `page_size`, `q`, `status`.
 - Dates ISO-8601 UTC, IDs integers, money in paise, JSON field names snake_case.
 - Raise `AppError(code, message, status)` from services; one handler in `main.py` formats it.

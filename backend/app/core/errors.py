@@ -29,7 +29,18 @@ async def handle_validation_error(request: Request, exc: RequestValidationError)
         {"loc": list(error["loc"]), "message": error["msg"], "type": error["type"]}
         for error in exc.errors()
     ]
-    return error_response(400, "VALIDATION_ERROR", "Check the submitted fields.", details)
+    route_name = getattr(request.scope.get("route"), "name", None)
+    if route_name == "complete_installation" and any(
+        item["type"] == "missing" and item["loc"][-1] in
+        {"signature", "started_at", "finished_at", "system_kw", "signed_by_name"} for item in details
+    ):
+        return error_response(409, "INSTALL_PROOF_REQUIRED", "Complete the installation proof before submitting.", details)
+    unprocessable = any(
+        item["type"] == "extra_forbidden" or
+        (route_name == "submit_enquiry" and item["loc"] in (["body", "phone"], ["body", "pincode"]))
+        for item in details
+    )
+    return error_response(422 if unprocessable else 400, "VALIDATION_ERROR", "Check the submitted fields.", details)
 
 
 async def handle_http_error(request: Request, exc: HTTPException) -> JSONResponse:
