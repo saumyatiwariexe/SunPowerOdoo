@@ -3,3 +3,8 @@
 import app.core.numbering  # noqa: F401
 import app.modules.catalog.models  # noqa: F401
 import app.modules.users.models  # noqa: F401
+
+# Person D modules
+import app.modules.leads.models  # noqa: F401
+import app.modules.subsidy.models  # noqa: F401
+# public and reports have no new tables

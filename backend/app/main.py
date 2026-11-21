@@ -30,6 +30,18 @@ def create_app() -> FastAPI:
         return {"data": {"status": "ok"}}
 
     api.include_router(auth_router)
+
+    # Person D routers
+    from app.modules.leads.router import router as leads_router
+    from app.modules.public.router import router as public_router
+    from app.modules.reports.router import router as reports_router
+    from app.modules.subsidy.router import router as subsidy_router
+
+    api.include_router(leads_router)
+    api.include_router(public_router)
+    api.include_router(reports_router)
+    api.include_router(subsidy_router)
+
     app.include_router(api)
     return app
 
