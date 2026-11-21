@@ -91,16 +91,8 @@ export default function EnquiryForm() {
           <Link to="/">← Home</Link>
           <h1>Request a solar quote</h1>
           <p>Tell us about your roof and the system you have in mind.</p>
-          <div className="enquiry-next">
-            <h2>What happens next?</h2>
-            <ol>
-              <li>Our sales team gets in touch to understand your needs.</li>
-              <li>A surveyor checks your roof and site suitability.</li>
-              <li>You receive a quote based on the approved survey.</li>
-            </ol>
-          </div>
         </div>
-        <div>
+        <div className="enquiry-form-area">
           {serverErr && (
             <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
               <span role="alert">{serverErr}</span>
@@ -170,7 +162,7 @@ export default function EnquiryForm() {
               />
             </Field>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="enquiry-system-fields grid grid-cols-2 gap-4">
               <Field label="System Size (kW)" error={errors.requested_kw} required>
                 <select
                   className={selectCls}
@@ -241,6 +233,14 @@ export default function EnquiryForm() {
             </button>
           </form>
         </div>
+        <aside className="enquiry-next">
+          <h2>What happens next?</h2>
+          <ol>
+            <li>Our sales team gets in touch to understand your needs.</li>
+            <li>A surveyor checks your roof and site suitability.</li>
+            <li>You receive a quote based on the approved survey.</li>
+          </ol>
+        </aside>
       </section>
     </PublicFrame>
   )

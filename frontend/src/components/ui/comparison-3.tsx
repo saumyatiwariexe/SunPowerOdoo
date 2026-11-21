@@ -72,7 +72,24 @@ export default function ComparisonBlock({ packages, systemType }: { packages: So
       <h3>See what changes as you size up.</h3>
       <p>These prices and equipment counts come from the current catalog. Your approved survey determines the final quote.</p>
     </div>
-    <p className="comparison-swipe">Swipe sideways to compare all sizes <RiArrowRightLine className="size-4" aria-hidden="true" /></p>
+    <div className="comparison-cards">
+      {plans.map((plan, i) => <article className={cn("comparison-card", i === featured && "comparison-card-featured")} key={plan.id}>
+        <div className="comparison-card-top">
+          <div><strong>{plan.capacity_kw} kW</strong><span>{plan.name}</span></div>
+          {i === featured && <Badge variant="default">Featured size</Badge>}
+        </div>
+        <p className="comparison-card-price">{money(plan.price_paise)} <small>catalog price</small></p>
+        <dl>
+          <div><dt>Solar panels</dt><dd>{quantity(plan, "PANEL")}</dd></div>
+          <div><dt>Inverter</dt><dd>{included(plan, "INVERTER") ? "Included" : "Not included"}</dd></div>
+          <div><dt>Battery units</dt><dd>{quantity(plan, "BATTERY") || "None"}</dd></div>
+          <div><dt>Installation</dt><dd>{included(plan, "SERVICE") ? "Included" : "Not included"}</dd></div>
+        </dl>
+        <Button asChild variant={i === featured ? "default" : "outline"} size="sm">
+          <a href={`/enquiry?kw=${plan.capacity_kw}&type=${systemType}`}>Enquire about {plan.capacity_kw} kW <RiArrowRightLine className="size-4" aria-hidden="true" /></a>
+        </Button>
+      </article>)}
+    </div>
     <div className="comparison-scroll" tabIndex={0} role="region" aria-label="Scroll to compare solar plans">
       <Table className="comparison-table">
         <TableHeader><TableRow>

@@ -8,10 +8,10 @@ export default function PublicFrame({ children }) {
       <header className="public-head">
         <Brand />
         <nav aria-label="Public navigation">
-          <a href="/#systems">Systems</a>
-          <a href="/#packages">Packages</a>
+          <a className="public-nav-systems" href="/#systems">Systems</a>
+          <a href="/#packages"><span className="public-nav-wide">Packages</span><span className="public-nav-short">Plans</span></a>
           <Link className="button" to="/login">
-            Staff sign in <span aria-hidden="true">↗</span>
+            <span className="public-nav-wide">Staff sign in</span><span className="public-nav-short">Sign in</span> <span aria-hidden="true">↗</span>
           </Link>
         </nav>
       </header>
