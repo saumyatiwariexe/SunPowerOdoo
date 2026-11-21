@@ -1,44 +1,40 @@
-import React, { useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import React from 'react'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from './AuthContext.jsx'
+import { modules } from './modules.js'
 import Sidebar from './Sidebar.jsx'
+import AppIcon from './AppIcon.jsx'
+import './shell.css'
 
 export default function Layout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { pathname } = useLocation()
+  const { currentUser, logout } = useAuth()
+  const navigate = useNavigate()
+  const atHome = pathname === '/workspace'
+  const active = modules.find(app => app.path === '/' + pathname.split('/')[1])
+  const identity = currentUser.name || currentUser.email
+  const signOut = async () => {
+    await logout()
+    navigate('/login', { replace: true })
+  }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-black/50 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar — fixed on mobile, static on desktop */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-30 w-60 transform transition-transform duration-200
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:static lg:translate-x-0 lg:flex-shrink-0`}
-      >
-        <Sidebar onClose={() => setSidebarOpen(false)} />
-      </aside>
-
-      {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Top bar (mobile only) */}
-        <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="text-slate-500 hover:text-slate-900"
-            aria-label="Open menu"
-          >
-            ☰
-          </button>
-          <span className="text-sm font-semibold text-amber-500">SunPower</span>
-        </header>
-
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+    <div className="sp-shell">
+      <a className="sp-skip" href="#workspace-content">Skip to content</a>
+      <header className="sp-bar no-print">
+        <Link to="/workspace" className="sp-brand" aria-label="SunPower applications">
+          <AppIcon name="apps" /><strong>SunPower</strong>
+        </Link>
+        <span className="sp-location">{atHome ? 'Applications' : active?.label}</span>
+        <div className="sp-account">
+          <span className="sp-avatar" aria-hidden="true">{identity?.slice(0, 1).toUpperCase()}</span>
+          <div className="sp-identity"><strong>{identity}</strong><span>{currentUser.role.toLowerCase()}</span></div>
+          <button type="button" onClick={signOut}>Sign out</button>
+        </div>
+      </header>
+      <div className="sp-body">
+        {!atHome && <Sidebar />}
+        <main id="workspace-content" tabIndex={-1} className={atHome ? 'sp-home' : 'sp-content'}>
           <Outlet />
         </main>
       </div>

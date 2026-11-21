@@ -1,0 +1,93 @@
+.sp-shell {
+  --plum: #714b67;
+  --plum-dark: #58384f;
+  color: #302e33;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #f8f8fa;
+  display: flex;
+  flex-direction: column;
+}
+.sp-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  min-height: 54px;
+  padding: 0 clamp(12px, 2vw, 32px);
+  background: var(--plum);
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.sp-brand, .sp-account { display: flex; align-items: center; gap: 12px; }
+.sp-brand { min-height: 44px; font-size: 18px; letter-spacing: -.04em; }
+.sp-location { border-left: 1px solid #ffffff47; padding-left: 18px; font-size: 14px; }
+.sp-account { margin-left: auto; min-width: 0; font-size: 13px; }
+.sp-avatar {
+  display: grid; place-items: center; width: 32px; height: 32px;
+  border-radius: 5px; background: #f3e5ee; color: var(--plum-dark); font-weight: 700;
+}
+.sp-identity { min-width: 0; max-width: 22vw; line-height: 1.25; }
+.sp-identity strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-identity span { color: #f2e5ef; font-size: 11px; text-transform: capitalize; }
+.sp-account button { min-height: 44px; padding: 0 8px; }
+.sp-account button:hover { background: #ffffff19; }
+.sp-skip { position: fixed; left: 12px; top: -80px; z-index: 12; padding: 10px; background: white; }
+.sp-skip:focus { top: 8px; }
+.sp-shell :is(a,button,input):focus-visible { outline: 2px solid #087c80; outline-offset: 3px; }
+.sp-bar :is(a,button):focus-visible { outline-color: white; outline-offset: -2px; }
+.sp-body { flex: 1; display: flex; min-width: 0; }
+.sp-content, .sp-home { flex: 1; min-width: 0; }
+.sp-content { padding: clamp(16px, 2.8vw, 42px); }
+.sp-sidebar { width: 210px; background: white; border-right: 1px solid #dfdce0; padding: 18px 10px; }
+.sp-sidebar nav { position: sticky; top: 72px; }
+.sp-sidebar a { display: flex; gap: 12px; align-items: center; min-height: 44px; padding: 8px 12px; font-size: 14px; border-radius: 4px; }
+.sp-sidebar a:first-child { color: var(--plum); margin-bottom: 10px; }
+.sp-sidebar a:hover, .sp-sidebar a.active { background: #f3edf2; }
+.sp-sidebar a.active { color: var(--plum-dark); font-weight: 600; box-shadow: inset 3px 0 var(--plum); }
+.sp-home { display: flex; }
+.sp-launcher {
+  flex: 1;
+  background-color: #f6f1f5;
+  background-image: linear-gradient(146deg, transparent 61%, #714b6706 61%, #714b6706 74%, transparent 74%),
+    radial-gradient(ellipse at 100% 100%, #d8c9d8, transparent 64%),
+    linear-gradient(120deg, #fffaf5, #f2ebf2 65%, #ece7ef);
+}
+.sp-launcher-inner { width: min(100%, 820px); margin: auto; padding: clamp(42px, 9vh, 96px) 24px 54px; }
+.sp-launcher h1 { text-align: center; font-size: clamp(26px, 4vw, 38px); font-weight: 600; letter-spacing: -.045em; color: #483b46; }
+.sp-search {
+  display: flex; align-items: center; gap: 12px; max-width: 430px; margin: 20px auto 36px;
+  padding: 0 14px; background: white; border: 1px solid #cfc4cf; border-radius: 6px; color: var(--plum);
+}
+.sp-search:focus-within { outline: 2px solid var(--plum); outline-offset: 2px; }
+.sp-shell .sp-search input { min-width: 0; width: 100%; min-height: 44px; font-size: 14px; outline: none; background: transparent; }
+.sp-grid { display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: 16px 4px; }
+.sp-grid li { width: 120px; }
+.sp-app { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 10px 2px; border-radius: 8px; text-align: center; }
+.sp-tile {
+  position: relative; overflow: hidden; display: grid; place-items: center; height: 60px; width: 60px;
+  background: linear-gradient(135deg, #ffffff28, transparent 65%), var(--tile); color: white;
+  border-radius: 13px; box-shadow: 0 2px 3px #38233424, inset 0 -3px #0000000a;
+}
+.sp-tile::before { position: absolute; content: ''; inset: 0; background: linear-gradient(145deg, transparent 55%, #0000000b 55%); }
+.sp-tile svg { position: relative; }
+.sp-app strong { font-size: 14px; font-weight: 600; }
+.sp-app small { color: #665e68; font-size: 11px; margin-top: -5px; }
+a.sp-app:hover { background: #ffffffa8; }
+.sp-pending .sp-tile { filter: saturate(.65); }
+.sp-empty { text-align: center; color: #655a64; }
+@media (max-width: 760px) {
+  .sp-sidebar, .sp-identity { display: none; }
+  .sp-bar { gap: 10px; }
+  .sp-location { padding-left: 10px; }
+  .sp-account { gap: 4px; }
+  .sp-grid li { width: calc(33.333% - 4px); }
+}
+@media (max-width: 420px) {
+  .sp-location { display: none; }
+}
+@media print {
+  .sp-shell, .sp-body, .sp-content { display: block; background: white; min-height: auto; }
+  .sp-skip { display: none; }
+}

@@ -18,8 +18,7 @@ class SubsidyClaim(TimestampMixin, Base):
     __tablename__ = "subsidy_claims"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", use_alter=True, name="fk_subsidy_claims_order_id"))
-    scheme: Mapped[str] = mapped_column(String(120))
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"))    scheme: Mapped[str] = mapped_column(String(120))
     status: Mapped[SubsidyStatus] = mapped_column(
         Enum(
             SubsidyStatus,

@@ -17,7 +17,7 @@ export default function ConfirmModal({ title = 'Are you sure?', message, confirm
           onClick={onConfirm}
           disabled={loading}
           className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${
-            danger ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-500 hover:bg-amber-600'
+            danger ? 'bg-red-600 hover:bg-red-700' : 'bg-brand-500 hover:bg-brand-600'
           }`}
         >
           {loading ? 'Please wait…' : confirmLabel}
