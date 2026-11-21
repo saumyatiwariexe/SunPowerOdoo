@@ -48,6 +48,21 @@ These findings were reproduced against an archive of the committed feature branc
 
 The release API used port 8102 and the frontend used 5275. Seeding the disposable PostgreSQL database twice retained the historical warranties and invoice. From the repository root, set `QA_SEED_PASSWORD` and run `python scripts/smoke_demo.py --base-url http://127.0.0.1:8102/api/v1`. For the browser regression, set `QA_UI_URL` to the matching frontend and run `node scripts/smoke_ui.cjs` where Playwright and Chrome are available.
 
+## Enquiry persistence follow-up
+
+| ID | Severity | Module and owner | Reproduction steps and result | Status | Fix commit |
+| --- | --- | --- | --- | --- | --- |
+| REF-08 | P1 | Frontend development configuration · D/A | Start Vite with a shell-only API target on port 8102. Restart from a new shell: the old config ignores root `.env` and falls back to API 8000, which can use a different database. Saved enquiries appear absent. Vite now loads the persisted target and fails on an occupied port. | fixed | `32ab278` |
+
+Read-only checks found 6, 7 and 10 leads through frontend ports 5173, 5274 and
+5275 respectively. These are separate datasets, not evidence of deleted rows.
+A submitted enquiry remained visible through the sales API after terminating
+its Python process and starting a fresh one against the same temporary SQLite
+file. All 41 backend tests, the proxy configuration regression and frontend build
+passed. A fresh Vite process without a shell API override used the saved root
+configuration and retrieved the release database's existing 10 leads. No existing
+database was seeded, reset or migrated during this investigation.
+
 ## Ten-line summary
 
 1. The release branch integrates the frontend, backend modules and nine-scene runner.
