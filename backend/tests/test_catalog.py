@@ -220,3 +220,9 @@ def test_public_catalog_includes_systems_and_hardware_package(client, engine):
     data = client.get("/api/v1/public/packages").json()["data"]
     assert len(data) == 11
     assert any(p["system_type"] is None and p["capacity_kw"] is None for p in data)
+    on_grid = next(p for p in data if p["system_type"] == "ON_GRID" and p["capacity_kw"] == 3)
+    off_grid = next(p for p in data if p["system_type"] == "OFF_GRID" and p["capacity_kw"] == 3)
+    assert isinstance(on_grid["price_paise"], int)
+    assert sum(item["qty"] for item in on_grid["components"] if item["category"] == "PANEL") == 6
+    assert not any(item["category"] == "BATTERY" for item in on_grid["components"])
+    assert any(item["category"] == "BATTERY" for item in off_grid["components"])

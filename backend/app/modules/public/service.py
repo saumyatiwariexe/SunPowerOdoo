@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import AppError
 from app.modules.leads.models import Lead, LeadSource, LeadStatus, SystemType
@@ -74,10 +74,12 @@ def create_enquiry(db: Session, data: EnquiryIn) -> EnquiryOut:
 def get_packages_public(db: Session) -> list:
     """Return active packages for the public landing page. Gracefully handles missing table."""
     try:
-        from app.modules.catalog.models import Package  # type: ignore
+        from app.modules.catalog.models import Package, PackageItem
 
         packages = db.scalars(
-            select(Package).where(Package.active.is_(True)).order_by(Package.capacity_kw)
+            select(Package).where(Package.active.is_(True))
+            .options(selectinload(Package.items).selectinload(PackageItem.product))
+            .order_by(Package.capacity_kw)
         ).all()
         return list(packages)
     except Exception:

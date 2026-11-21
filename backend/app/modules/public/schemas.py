@@ -42,6 +42,12 @@ class PackageItemPublic(BaseModel):
     qty: float
 
 
+class PackageComponentPublic(BaseModel):
+    product_name: str
+    category: str
+    qty: int
+
+
 class PackagePublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -50,3 +56,4 @@ class PackagePublic(BaseModel):
     system_type: str | None
     capacity_kw: float | None
     price_paise: int
+    components: list[PackageComponentPublic] = Field(default_factory=list)

@@ -4,6 +4,7 @@ import PublicFrame from './PublicFrame'
 import { State, useRecord } from '../../app/records'
 import { formatPaise } from '../../app/api'
 import AppIcon from '../../app/AppIcon'
+import ComparisonBlock from '../../components/ui/comparison-3'
 
 export default function LandingPage() {
   const packages = useRecord('/public/packages')
@@ -121,6 +122,9 @@ export default function LandingPage() {
               <Link to="/enquiry">Ask about your roof.</Link>
             </p>
           )}
+        </State>
+        <State resource={packages}>
+          <ComparisonBlock packages={packages.data || []} systemType={type} />
         </State>
         <p className="package-context">Catalog prices are indicative. The approved survey, chosen components, quantities and any applicable subsidy appear in the final quote. Generation and bill savings depend on the site and usage.</p>
       </section>

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.modules.public import service
-from app.modules.public.schemas import EnquiryIn, EnquiryOut, PackagePublic
+from app.modules.public.schemas import EnquiryIn, EnquiryOut, PackageComponentPublic, PackagePublic
 
 router = APIRouter(prefix="/public", tags=["public"])
 
@@ -27,7 +27,10 @@ def list_packages(
     packages = service.get_packages_public(db)
     return {
         "data": [
-            PackagePublic.model_validate(p).model_dump() if hasattr(p, "__table__") else p
+            PackagePublic.model_validate(p).model_copy(update={"components": [
+                PackageComponentPublic(product_name=item.product.name, category=item.product.category.value, qty=item.qty)
+                for item in p.items
+            ]}).model_dump() if hasattr(p, "__table__") else p
             for p in packages
         ]
     }
