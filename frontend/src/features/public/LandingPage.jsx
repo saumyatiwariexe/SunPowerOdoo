@@ -8,19 +8,20 @@ import AppIcon from '../../app/AppIcon'
 export default function LandingPage() {
   const packages = useRecord('/public/packages')
   const [type, setType] = useState('ON_GRID')
+  const [capacity, setCapacity] = useState(3)
   const systems = (packages.data || []).filter((p) => p.system_type === type)
+  const selected = systems.find((p) => Number(p.capacity_kw) === capacity) || systems[0]
   return (
     <PublicFrame>
       <section className="public-hero">
         <div className="hero-copy">
           <h1>
-            Your roof.
+            Solar that fits
             <br />
-            <em>A brighter future.</em>
+            <em>your real life.</em>
           </h1>
           <p>
-            Explore on-grid and off-grid systems for your home. Our team surveys your roof, installs your
-            panels and supports them after switch-on.
+            Compare real 1–5 kW packages, see what goes into each system, and start with a plan shaped around your roof and electricity needs.
           </p>
           <div className="actions">
             <Link className="button primary" to="/enquiry">
@@ -31,8 +32,8 @@ export default function LandingPage() {
             </a>
           </div>
           <div className="hero-benefits">
-            <span><AppIcon name="survey" size={18} />Site-specific planning</span>
-            <span><AppIcon name="leaf" size={18} />Support after installation</span>
+            <span><AppIcon name="survey" size={18} />1–5 kW plans</span>
+            <span><AppIcon name="leaf" size={18} />Survey to service</span>
           </div>
         </div>
         <figure className="hero-image">
@@ -76,7 +77,7 @@ export default function LandingPage() {
       </section>
       <section id="packages" className="public-packages">
         <div className="section-line">
-          <div><h2>Find your solar fit.</h2><p className="section-help">Choose a system and explore available capacities.</p></div>
+          <div><h2>Explore the plans.</h2><p className="section-help">Choose how your system connects, then compare live catalog prices by capacity.</p></div>
           <div className="switcher">
             {[
               ['ON_GRID', 'On-grid'],
@@ -90,23 +91,30 @@ export default function LandingPage() {
         </div>
         <State resource={packages}>
           {systems.length ? (
-            <ul className="package-list">
-              {systems.map((p) => (
-                <li key={p.id}>
-                  <span className="capacity">
-                    <AppIcon name="survey" size={32} />{p.capacity_kw} <small>kW</small>
-                  </span>
-                  <strong>{p.name}</strong>
-                  <span>{formatPaise(p.price_paise)}</span>
-                  <Link
-                    aria-label={'Enquire about ' + p.name}
-                    to={'/enquiry?kw=' + p.capacity_kw + '&type=' + type}
-                  >
-                    Enquire ↗
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <div className="plan-studio">
+              <div className="plan-chooser">
+                <h3>Pick a capacity to explore</h3>
+                <p>Choose from the available 1–5 kW packages. Your electricity bill and roof survey help the team confirm a suitable size.</p>
+                <div className="plan-capacities" role="group" aria-label="System capacity">
+                  {systems.map((p) => <button type="button" key={p.id} aria-pressed={capacity === Number(p.capacity_kw)}
+                    onClick={() => setCapacity(Number(p.capacity_kw))}>{p.capacity_kw} <small>kW</small></button>)}
+                </div>
+                <p className="plan-chooser-note">Exploring a plan does not place an order.</p>
+              </div>
+              <article className="plan-feature" aria-live="polite">
+                <div className="plan-feature-top"><span>{type === 'ON_GRID' ? 'Grid-connected' : 'Battery-backed'}</span><span>{selected.capacity_kw} kW package</span></div>
+                <h3>{selected.name}</h3>
+                <p>{type === 'ON_GRID' ? 'Designed around panel generation and your existing grid connection.' : 'Adds battery storage for power needs beyond the grid connection.'}</p>
+                <div className="plan-price"><small>Catalog package price</small><strong>{formatPaise(selected.price_paise)}</strong></div>
+                <ul>
+                  <li>Solar panels and mounting stands</li>
+                  <li>Inverter, controller, wiring and safety equipment</li>
+                  {type === 'OFF_GRID' && <li>Battery units sized for this package</li>}
+                  <li>Installation service line</li>
+                </ul>
+                <Link className="button primary" to={'/enquiry?kw=' + selected.capacity_kw + '&type=' + type}>Enquire about this plan →</Link>
+              </article>
+            </div>
           ) : (
             <p className="state">
               No packages are listed for this system type.{' '}
@@ -114,7 +122,16 @@ export default function LandingPage() {
             </p>
           )}
         </State>
-        <p className="package-context">Prices shown are package starting points. Your final quote follows a roof survey and lists the equipment and installation work for your site.</p>
+        <p className="package-context">Catalog prices are indicative. The approved survey, chosen components, quantities and any applicable subsidy appear in the final quote. Generation and bill savings depend on the site and usage.</p>
+      </section>
+      <section className="public-components" aria-labelledby="components-title">
+        <div><h2 id="components-title">More than panels on a roof.</h2><p>Generation, conversion, protection and installation work together. Your quote itemises the parts so you can see what is included.</p></div>
+        <div className="component-map">
+          <div><span>01</span><strong>Panels &amp; structure</strong><p>Modules, stands and connectors form a planned array for your available roof.</p></div>
+          <div><span>02</span><strong>Power equipment</strong><p>Inverter, controller, wiring and safety components complete the electrical system.</p></div>
+          <div><span>03</span><strong>Storage when needed</strong><p>Off-grid packages add batteries. The survey and quote confirm the configuration.</p></div>
+          <div><span>04</span><strong>Installation &amp; handover</strong><p>System packages include an installation service line and documented handover.</p></div>
+        </div>
       </section>
       <section className="public-aftercare" aria-labelledby="aftercare-title">
         <div>

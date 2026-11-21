@@ -1266,6 +1266,34 @@ details[open] > summary {
   .system-comparison h3 { font-size: 1.4rem; }
   .system-comparison p { color: #46596a; line-height: 1.6; max-width: 56ch; flex: 1; }
   .package-context { color: #526579; font-size: .9rem; line-height: 1.55; margin-top: 18px; max-width: 75ch; }
+  .plan-studio { display: grid; grid-template-columns: .8fr 1.2fr; gap: 22px; margin-top: 30px; }
+  .plan-chooser { display: flex; flex-direction: column; padding: clamp(24px, 3vw, 42px); background: #eaf2fb; border-radius: 16px; }
+  .plan-chooser h3 { font-size: clamp(1.5rem, 2.2vw, 2.3rem); line-height: 1.18; }
+  .plan-chooser p { color: #46596a; line-height: 1.6; margin-top: 14px; }
+  .plan-capacities { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 32px; }
+  .plan-capacities button { min-width: 64px; min-height: 62px; border: 1px solid #b8cadf; border-radius: 8px; background: white; color: #173b62; font-size: 1.25rem; font-weight: 700; }
+  .plan-capacities button small { display: block; font-size: .7rem; font-weight: 500; }
+  .plan-capacities button[aria-pressed="true"] { background: #195bb1; color: white; border-color: #195bb1; }
+  .plan-chooser .plan-chooser-note { margin-top: auto; padding-top: 28px; font-size: .82rem; }
+  .plan-feature { padding: clamp(24px, 3vw, 42px); background: #173657; color: white; border-radius: 16px; }
+  .plan-feature-top { display: flex; justify-content: space-between; gap: 12px; color: #c9dced; font-size: .82rem; }
+  .plan-feature h3 { font-size: clamp(2rem, 3vw, 3.3rem); line-height: 1.1; margin-top: 27px; }
+  .plan-feature > p { color: #d5e5f2; margin-top: 11px; line-height: 1.55; }
+  .plan-price { display: grid; gap: 4px; margin: 29px 0; padding: 22px 0; border-block: 1px solid #58718b; }
+  .plan-price small { color: #d5e5f2; }
+  .plan-price strong { font-size: clamp(2rem, 3vw, 3rem); line-height: 1.1; }
+  .plan-feature ul { display: grid; gap: 11px; margin: 0 0 30px; padding-left: 20px; color: #ecf4fb; }
+  .plan-feature li::marker { color: #ffdc79; }
+  .plan-feature .button.primary { background: #ffdc79; border-color: #ffdc79; color: #173657; }
+  .plan-feature .button.primary:hover { background: #f4cb55; }
+  .public-components { display: grid; grid-template-columns: .7fr 1.3fr; gap: 36px; margin-top: 64px; padding: 46px 0; border-block: 1px solid #d8e2eb; }
+  .public-components h2 { font-size: clamp(1.8rem, 2.8vw, 2.8rem); line-height: 1.15; }
+  .public-components > div:first-child p { margin-top: 16px; color: #46596a; line-height: 1.6; }
+  .component-map { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
+  .component-map > div { display: grid; align-content: start; gap: 8px; }
+  .component-map span { color: #205ea0; font-weight: 750; font-variant-numeric: tabular-nums; }
+  .component-map strong { font-size: 1.08rem; }
+  .component-map p { color: #46596a; line-height: 1.55; }
   .public-aftercare { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: clamp(28px, 5vw, 80px); padding: clamp(26px, 4vw, 54px); background: #163657; color: white; border-radius: 14px; }
   .public-aftercare > div { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; }
   .public-aftercare > div p { color: #d2e1f0; line-height: 1.6; }
@@ -1285,10 +1313,13 @@ details[open] > summary {
 @media screen and (max-width: 900px) {
   .solar-journey { grid-template-columns: 1fr; }
   .public-aftercare, .public-faq { grid-template-columns: 1fr; }
+  .plan-studio, .public-components { grid-template-columns: 1fr; }
 }
 @media screen and (max-width: 560px) {
   .public-explainer, .public-aftercare, .public-faq { margin-top: 48px; }
   .system-comparison { grid-template-columns: 1fr; }
+  .component-map { grid-template-columns: 1fr; gap: 25px; }
+  .plan-capacities { margin-top: 22px; }
   .public-faq { margin-bottom: 48px; }
   .solar-journey ol { grid-template-columns: 1fr; }
   .solar-journey li { display: grid; grid-template-columns: 32px 1fr; gap: 0 10px; border: 0; padding: 0; }
