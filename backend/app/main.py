@@ -5,6 +5,7 @@ from starlette.exceptions import HTTPException
 
 from app.core.config import get_settings
 from app.core.errors import AppError, handle_app_error, handle_http_error, handle_validation_error
+from app.modules.catalog.router import router as catalog_router
 from app.modules.users.router import router as auth_router
 from app.modules.users.service import LoginRateLimiter
 
@@ -30,6 +31,7 @@ def create_app() -> FastAPI:
         return {"data": {"status": "ok"}}
 
     api.include_router(auth_router)
+    api.include_router(catalog_router)
     app.include_router(api)
     return app
 
