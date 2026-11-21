@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { api, formatPaise } from './api'
 import { human } from './navigation'
+import AppIcon from './AppIcon'
 
 export function useRecord(path, load = api.get) {
   const [version, setVersion] = useState(0)
@@ -21,15 +22,16 @@ export function useRecord(path, load = api.get) {
   }, [path, version, load])
   const reload = useCallback(() => setVersion((v) => v + 1), [])
   return {
-    ...(result.path === path && result.version === version ? result : { loading: !!path }),
+    ...(result.path === path ? result : { loading: !!path }),
+    refreshing: result.path === path && result.version !== version,
     reload,
   }
 }
 export function State({ resource, children }) {
   if (resource.loading)
     return (
-      <p role="status" className="state">
-        Loading…
+      <p role="status" className="state loading-state">
+        <span className="loading-spinner" aria-hidden="true" />Loading…
       </p>
     )
   if (resource.error)
@@ -69,7 +71,7 @@ export function display(key, value) {
   return String(value).replaceAll('_', ' ')
 }
 export function DataTable({ rows = [], columns, empty = 'No records yet.' }) {
-  if (!rows.length) return <p className="state">{empty}</p>
+  if (!rows.length) return <div className="state empty-state"><AppIcon name="document" size={30} /><p>{empty}</p></div>
   return (
     <div className="table-wrap">
       <table className="data-table">

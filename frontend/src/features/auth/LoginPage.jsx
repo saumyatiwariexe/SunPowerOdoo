@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
 import { homeFor } from '../../app/navigation'
 import Field from '../../app/components/Field'
+import AppIcon from '../../app/AppIcon'
 import PublicFrame from '../public/PublicFrame'
 
 export default function LoginPage() {
@@ -37,8 +38,9 @@ export default function LoginPage() {
           <img src="/solar-array.jpg" alt="" />
         </div>
         <section className="login-form">
+          <div className="login-symbol"><AppIcon name="people" size={26} /></div>
           <h1>Staff sign in</h1>
-          <p>Sign in to your SunPower workspace.</p>
+          <p>Use your work account to access your SunPower workspace.</p>
           <form onSubmit={submit} className="stack">
             <Field label="Work email">
               <input type="email" name="email" autoComplete="username" required />

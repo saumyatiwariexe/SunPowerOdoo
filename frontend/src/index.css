@@ -1171,3 +1171,102 @@ details[open] > summary {
     margin-left: auto;
   }
 }
+
+@media screen {
+  :root {
+    --ink: #172940;
+    --muted: #526579;
+    --line: #d6e0e9;
+    --pine: #1758af;
+    --leaf: #e6effc;
+    --paper: #f4f7fb;
+    --sun: #ffdc79;
+  }
+  :focus-visible { outline-color: #4285df; }
+  .workspace-body { background: var(--paper); min-width: 0; }
+  .rail, .mobile-nav, .sidebar { background: #122944; color: #eff6ff; }
+  .rail { border: 0; }
+  .sidebar-head { border-bottom: 1px solid #32475f; }
+  .sidebar .brand, .identity a { color: white; }
+  .sidebar nav h2, .identity small { color: #a5bed6; }
+  .sidebar nav a { color: #d6e4f2; }
+  .sidebar nav a:hover { background: #223e5c; }
+  .sidebar nav a.active { color: white; background: #2157a0; box-shadow: none; }
+  .identity { border-color: #32475f; }
+  .identity button, .sidebar .menu-button { color: #e0eaf5; }
+  .topline { background: white; }
+  .topline-user { margin-left: auto; display: flex; align-items: center; gap: 12px; font-variant-numeric: tabular-nums; }
+  .button.primary { background: #195bb1; border-color: #195bb1; color: white; }
+  .button.primary:hover { background: #134789; }
+  .financials { background: #163657; border-color: #163657; color: white; }
+  .financials > div { border-color: #44617b; }
+  .financials dt { color: #dce9f4; display: flex; align-items: center; gap: 8px; }
+  .financials dt svg { color: #ffd274; flex-shrink: 0; }
+  .financials dd { color: white; }
+  .dashboard-split { gap: 20px; }
+  .dashboard-split > section { border: 1px solid var(--line); border-radius: 12px; padding: clamp(16px, 2vw, 28px); background: white; }
+  .section-help { color: var(--muted); font-size: .9rem; margin-top: 6px; }
+  .stage-label { display: grid; gap: 6px; flex: 1; margin-right: 16px; }
+  .work-rows a { align-items: center; gap: 10px; }
+  .work-rows a > svg { flex-shrink: 0; }
+  .stage-track { display: block; height: 5px; border-radius: 6px; background: #e8eef5; overflow: hidden; }
+  .stage-track > span { display: block; height: 100%; background: #4484cb; border-radius: inherit; }
+  .bar-slot i { background: #3977b8; }
+  .public-site { background: #fffdf6; }
+  .public-hero { border-color: #e4dfcd; gap: clamp(12px, 2vw, 32px); }
+  .hero-copy em { color: #205ea0; }
+  .hero-copy p { color: #46596a; }
+  .hero-benefits { display: flex; gap: 12px 18px; flex-wrap: wrap; margin-top: 30px; }
+  .hero-benefits span { display: flex; align-items: center; gap: 6px; font-size: .8rem; color: #455970; }
+  .hero-benefits svg { color: #93640b; }
+  .hero-image, .login-photo { position: relative; border-radius: 16px; }
+  .hero-image figcaption { position: absolute; bottom: 0; left: 0; right: 0; display: flex; gap: 12px; align-items: center; padding: 42px 24px 20px; color: white; background: linear-gradient(transparent, #0a223dde 80%); font-weight: 650; }
+  .hero-image figcaption svg { color: #ffdc79; }
+  .hero-image figcaption small { display: block; color: #edf4ff; font-weight: 400; }
+  .solar-journey { display: grid; grid-template-columns: 1fr 2fr; align-items: center; gap: clamp(20px, 3vw, 44px); margin-top: 28px; padding: clamp(20px, 3vw, 44px); background: #163657; color: white; border-radius: 14px; }
+  .solar-journey h2 { font-size: clamp(1.45rem, 2.1vw, 2.25rem); line-height: 1.13; }
+  .solar-journey p { font-size: .85rem; line-height: 1.5; color: #d2e1f0; margin-top: 7px; }
+  .solar-journey ol { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 0; padding: 0; list-style: none; }
+  .solar-journey li { border-left: 1px solid #4a6279; padding-left: 16px; }
+  .solar-journey li svg { display: block; margin-bottom: 12px; color: #ffda82; }
+  .capacity { display: flex; align-items: baseline; gap: 4px; }
+  .capacity svg { color: #266baa; align-self: center; flex-shrink: 0; margin-right: 3px; }
+  .subsidy-note { background: #faeabc; }
+  .login-grid { gap: clamp(20px, 5vw, 80px); }
+  .login-form { background: white; border: 1px solid var(--line); border-radius: 14px; padding: clamp(20px, 3vw, 40px); width: min(100%, 440px); }
+  .login-symbol { color: #245fa4; background: #eaf2fc; padding: 10px; border-radius: 12px; width: 46px; height: 46px; margin-bottom: 18px; }
+}
+@media screen and (max-width: 900px) {
+  .solar-journey { grid-template-columns: 1fr; }
+}
+@media screen and (max-width: 560px) {
+  .solar-journey ol { grid-template-columns: 1fr; }
+  .solar-journey li { display: grid; grid-template-columns: 32px 1fr; gap: 0 10px; border: 0; padding: 0; }
+  .solar-journey li svg { grid-row: span 2; margin: 0; }
+  .solar-journey li p { margin-top: 2px; }
+  .hero-benefits { margin-top: 18px; }
+  .hero-image figcaption { padding-inline: 16px; }
+  .login-form { margin-block: 16px; }
+}
+
+@media screen {
+  .sidebar .brand svg { color: #ffda82; }
+  .public-head .brand svg { color: #9c650e; }
+  .enquiry-next { margin-top: 28px; background: #f8edcf; padding: 22px; border-radius: 12px; max-width: 390px; }
+  .enquiry-next ol { margin: 12px 0 0; padding-left: 1.4em; list-style: decimal; }
+  .enquiry-next li { padding: 4px 0 4px 4px; }
+  .enquiry-next li::marker { color: #785315; font-weight: 700; }
+  .confirmation-icon { display: inline-flex; padding: 14px; background: #faeabc; color: #785315; border-radius: 16px; margin-bottom: 20px; }
+  .empty-state { display: grid; justify-items: center; gap: 10px; background: white; border: 1px dashed #adbdcd; border-radius: 10px; padding: 32px 16px; }
+  .empty-state svg { color: #567fa7; }
+  .loading-state { display: flex; gap: 9px; align-items: center; }
+  .loading-spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #d2dfed; border-top-color: var(--pine); }
+}
+@media screen and (prefers-reduced-motion: no-preference) {
+  .loading-spinner { animation: solar-spin .8s linear infinite; }
+  @keyframes solar-spin { to { transform: rotate(360deg); } }
+}
+@media screen and (max-width: 760px) {
+  .package-list li { grid-template-columns: minmax(85px, auto) 1fr auto; }
+  .capacity svg { width: 23px; height: 23px; }
+}

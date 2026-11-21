@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import PublicFrame from './PublicFrame'
 import { State, useRecord } from '../../app/records'
 import { formatPaise } from '../../app/api'
+import AppIcon from '../../app/AppIcon'
 
 export default function LandingPage() {
   const packages = useRecord('/public/packages')
@@ -13,9 +14,9 @@ export default function LandingPage() {
       <section className="public-hero">
         <div className="hero-copy">
           <h1>
-            Solar power for
+            Your roof.
             <br />
-            <em>your rooftop.</em>
+            <em>A brighter future.</em>
           </h1>
           <p>
             Explore on-grid and off-grid systems for your home. Our team surveys your roof, installs your
@@ -29,6 +30,10 @@ export default function LandingPage() {
               Explore packages ↓
             </a>
           </div>
+          <div className="hero-benefits">
+            <span><AppIcon name="survey" size={18} />Site-specific planning</span>
+            <span><AppIcon name="leaf" size={18} />Support after installation</span>
+          </div>
         </div>
         <figure className="hero-image">
           <img
@@ -36,11 +41,20 @@ export default function LandingPage() {
             alt="Blue solar panels collecting sunlight outdoors"
             fetchpriority="high"
           />
+          <figcaption><AppIcon name="leaf" /><span>Power starts at home.<small>Find the right system for your rooftop.</small></span></figcaption>
         </figure>
+      </section>
+      <section className="solar-journey" aria-labelledby="journey-title">
+        <div><h2 id="journey-title">From your first question<br />to your first solar day.</h2><p>One team through every step.</p></div>
+        <ol>
+          <li><AppIcon name="people" size={28} /><strong>Tell us about your roof</strong><p>Share your location and power needs.</p></li>
+          <li><AppIcon name="survey" size={28} /><strong>Get a site survey</strong><p>We check your roof before preparing a quote.</p></li>
+          <li><AppIcon name="calendar" size={28} /><strong>Install &amp; switch on</strong><p>Your crew fits and tests the system.</p></li>
+        </ol>
       </section>
       <section id="packages" className="public-packages">
         <div className="section-line">
-          <h2>Solar packages</h2>
+          <div><h2>Find your solar fit.</h2><p className="section-help">Choose a system and explore available capacities.</p></div>
           <div className="switcher">
             {[
               ['ON_GRID', 'On-grid'],
@@ -58,7 +72,7 @@ export default function LandingPage() {
               {systems.map((p) => (
                 <li key={p.id}>
                   <span className="capacity">
-                    {p.capacity_kw} <small>kW</small>
+                    <AppIcon name="survey" size={32} />{p.capacity_kw} <small>kW</small>
                   </span>
                   <strong>{p.name}</strong>
                   <span>{formatPaise(p.price_paise)}</span>

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import RevenueTrend from './RevenueTrend'
 import { api, formatPaise } from '../../app/api'
 import { DataTable, Heading, State, useRecord } from '../../app/records'
+import AppIcon from '../../app/AppIcon'
 
 export default function DashboardPage() {
   const [range, setRange] = useState('today')
@@ -68,7 +69,7 @@ export default function DashboardPage() {
                 ['outstanding_paise', 'Outstanding'],
               ].map(([k, name]) => (
                 <div key={k}>
-                  <dt>{name}</dt>
+                  <dt><AppIcon name={k === 'outstanding_paise' ? 'document' : 'chart'} />{name}</dt>
                   <dd>{formatPaise(summary.data[k])}</dd>
                 </div>
               ))}
@@ -77,6 +78,7 @@ export default function DashboardPage() {
             <div className="dashboard-split">
               <section>
                 <h2>Work in progress</h2>
+                <p className="section-help">Select a stage to move the next job forward.</p>
                 <State resource={unfinished}>
                   {unfinished.data && (
                     <ul className="work-rows">
@@ -88,8 +90,9 @@ export default function DashboardPage() {
                       ].map(([k, name, path]) => (
                         <li key={k}>
                           <Link to={'/' + path}>
-                            {name}
-                            <strong>{unfinished.data[k]}</strong>
+                            <AppIcon name={{ surveys: 'survey', orders: 'bag', deliveries: 'truck', installs: 'calendar' }[path]} />
+                            <span className="stage-label">{name}<span className="stage-track"><span style={{ width: (unfinished.data[k] / Math.max(1, ...Object.values(unfinished.data))) * 100 + '%' }} /></span></span>
+                            <strong>{unfinished.data[k]}</strong><span aria-hidden="true">↗</span>
                           </Link>
                         </li>
                       ))}

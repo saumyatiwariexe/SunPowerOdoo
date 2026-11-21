@@ -3,9 +3,11 @@ import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import AppIcon from './AppIcon'
 import { sections } from './navigation'
+import { useAuth } from './AuthContext'
 
 export default function Layout() {
   const menu = useRef(null)
+  const { currentUser } = useAuth()
   const { pathname } = useLocation()
   const group = sections.find(([, items]) => items.some(([path]) => path === pathname.split('/')[1]))
   useEffect(() => {
@@ -51,6 +53,10 @@ export default function Layout() {
           <span>Workspace</span>
           <span aria-hidden="true">/</span>
           <strong>{group?.[0] || 'SunPower'}</strong>
+          <div className="topline-user">
+            <span>{new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short' }).format(new Date())}</span>
+            <span className="avatar" title={currentUser.name}>{currentUser.name?.slice(0, 1)}</span>
+          </div>
         </header>
         <main id="workspace-main" className="workspace-main" tabIndex="-1">
           <Outlet />

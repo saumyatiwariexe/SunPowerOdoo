@@ -88,14 +88,22 @@ export default function EnquiryForm() {
     <PublicFrame>
       <section className="paper enquiry">
         <div className="form-intro">
-          <Link to="/">? Home</Link>
+          <Link to="/">← Home</Link>
           <h1>Request a solar quote</h1>
           <p>Tell us about your roof and the system you have in mind.</p>
+          <div className="enquiry-next">
+            <h2>What happens next?</h2>
+            <ol>
+              <li>Our sales team gets in touch to understand your needs.</li>
+              <li>A surveyor checks your roof and site suitability.</li>
+              <li>You receive a quote based on the approved survey.</li>
+            </ol>
+          </div>
         </div>
         <div>
           {serverErr && (
             <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-              {serverErr}
+              <span role="alert">{serverErr}</span>
             </div>
           )}
 
