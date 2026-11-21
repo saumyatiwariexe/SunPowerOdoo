@@ -34,7 +34,7 @@ export default function LandingPage() {
           <img
             src="/solar-array.jpg"
             alt="Blue solar panels collecting sunlight outdoors"
-            fetchPriority="high"
+            fetchpriority="high"
           />
         </figure>
       </section>
