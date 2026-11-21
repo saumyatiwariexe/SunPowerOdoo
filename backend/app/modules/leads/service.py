@@ -1,5 +1,5 @@
 from sqlalchemy import cast, func, select, String
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import AppError
 from app.modules.leads.models import Lead, LeadCall, LeadSource, LeadStatus, LEAD_TRANSITIONS
@@ -24,7 +24,7 @@ def list_leads(
 ) -> tuple[list[Lead], int]:
     from app.modules.users.models import Customer
 
-    stmt = select(Lead)
+    stmt = select(Lead).options(selectinload(Lead.customer))
     if status:
         try:
             s = LeadStatus(status)

@@ -96,7 +96,10 @@ def test_send_accept_and_repeat_returns_one_draft_order(client, database):
     assert order["advance_min_paise"] == 31
     assert order["confirmed_at"] is None
     assert client.get(quote_url).json()["data"]["status"] == "ACCEPTED"
-    assert client.get(f"{ORDERS}/{order['id']}").json()["data"] == order
+    assert client.get(f"{ORDERS}/{order['id']}").json()["data"] == {**order, "paid_paise": 0}
+    listing = client.get(ORDERS).json()
+    assert listing["data"] == [order]
+    assert listing["meta"]["total"] == 1
     assert client.post(f"{quote_url}/accept").json()["data"] == order
     with Session(engine) as db:
         assert quotes_service.convert_to_order(db, quote_id).id == order["id"]

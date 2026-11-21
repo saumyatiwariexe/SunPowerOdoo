@@ -20,6 +20,14 @@ class LeadCallOut(BaseModel):
     created_at: datetime
 
 
+class LeadCustomer(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    name: str
+    phone: str
+    address: str
+
+
 class LeadOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -35,6 +43,11 @@ class LeadOut(BaseModel):
     notes: str | None
     created_at: datetime
     updated_at: datetime
+    customer: LeadCustomer
+
+
+class LeadDetail(LeadOut):
+    calls: list[LeadCallOut]
 
 
 class LeadCreate(BaseModel):

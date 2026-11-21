@@ -16,3 +16,12 @@ class OrderRead(BaseModel):
     total_paise: int
     advance_min_paise: int
     confirmed_at: datetime | None
+
+
+class OrderDetailRead(OrderRead):
+    paid_paise: int
+
+
+class OrderPage(BaseModel):
+    data: list[OrderRead]
+    meta: dict[str, int]

@@ -1,15 +1,22 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.money import minimum_advance_paise
+from app.core.pagination import Pagination
 from app.core.numbering import NumberPrefix, next_number
 from app.modules.billing.service import get_order_paid_paise
 
 from .models import Order, OrderStatus
+
+
+def list_orders(db: Session, paging: Pagination) -> tuple[list[Order], int]:
+    total = db.scalar(select(func.count()).select_from(Order)) or 0
+    query = select(Order).order_by(Order.id.desc()).offset(paging.offset).limit(paging.page_size)
+    return list(db.scalars(query)), total
 
 
 def get_order(db: Session, order_id: int, *, for_update: bool = False) -> Order:

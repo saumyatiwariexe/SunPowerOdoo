@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 
 from sqlalchemy import BigInteger, Boolean, Enum, ForeignKey, Index, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base, TimestampMixin, UTCDateTime
 
@@ -62,6 +62,10 @@ class Lead(TimestampMixin, Base):
     assigned_to_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     lost_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+    customer = relationship("Customer", viewonly=True)
+    calls = relationship("LeadCall", viewonly=True, order_by="LeadCall.called_at.desc()")
 
 
 class LeadCall(TimestampMixin, Base):

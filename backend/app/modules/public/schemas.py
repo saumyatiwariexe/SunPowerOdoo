@@ -47,6 +47,6 @@ class PackagePublic(BaseModel):
 
     id: int
     name: str
-    system_type: str
-    capacity_kw: float
+    system_type: str | None
+    capacity_kw: float | None
     price_paise: int

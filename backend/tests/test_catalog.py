@@ -184,3 +184,12 @@ def test_demo_seed_system_sizes_and_installation(engine):
         db.rollback()
     with Session(engine) as db:
         assert db.scalar(select(Package.id).limit(1)) is None
+
+
+def test_public_catalog_includes_systems_and_hardware_package(client, engine):
+    with Session(engine) as db:
+        seed_catalog(db)
+        db.commit()
+    data = client.get("/api/v1/public/packages").json()["data"]
+    assert len(data) == 11
+    assert any(p["system_type"] is None and p["capacity_kw"] is None for p in data)

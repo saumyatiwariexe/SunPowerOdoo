@@ -7,7 +7,7 @@ from app.core.db import get_db
 from app.core.deps import require_roles
 from app.core.pagination import Pagination
 from app.modules.leads import service
-from app.modules.leads.schemas import LeadCallCreate, LeadCallOut, LeadCreate, LeadLostIn, LeadOut, LeadUpdate
+from app.modules.leads.schemas import LeadDetail, LeadCallCreate, LeadCallOut, LeadCreate, LeadLostIn, LeadOut, LeadUpdate
 from app.modules.users.models import Role, User
 
 router = APIRouter(prefix="/leads", tags=["leads"])
@@ -47,7 +47,7 @@ def get_lead(
     actor: Annotated[User, Depends(AnyStaff)],
 ) -> dict:
     lead = service.get_lead(db, lead_id)
-    return {"data": LeadOut.model_validate(lead)}
+    return {"data": LeadDetail.model_validate(lead)}
 
 
 @router.patch("/{lead_id}", response_model=dict)
