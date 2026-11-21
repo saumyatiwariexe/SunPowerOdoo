@@ -4,6 +4,7 @@ from pathlib import Path
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
+from sqlalchemy.engine import make_url
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -16,6 +17,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    database_url_override: SecretStr | None = Field(default=None, validation_alias="DATABASE_URL")
     postgres_db: str = "sunpower"
     postgres_user: str = "sunpower"
     postgres_password: SecretStr | None = None
@@ -30,6 +32,11 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> URL:
+        if self.database_url_override is not None:
+            url = make_url(self.database_url_override.get_secret_value())
+            if url.drivername == "postgresql":
+                return url.set(drivername="postgresql+psycopg")
+            return url
         return URL.create(
             "postgresql+psycopg",
             username=self.postgres_user,

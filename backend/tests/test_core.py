@@ -204,3 +204,7 @@ def test_director_staff_directory_and_access_changes(client, engine):
     assert client.patch(detail, json={"active": False}).status_code == 200
     switch(worker_cookie)
     assert client.get(ME).status_code == 401
+
+def test_database_url_overrides_postgres_defaults(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "sqlite:///release-check.sqlite")
+    assert str(Settings(_env_file=None).database_url) == "sqlite:///release-check.sqlite"
