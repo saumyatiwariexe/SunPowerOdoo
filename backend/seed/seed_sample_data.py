@@ -14,6 +14,7 @@ from datetime import UTC, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from app.modules.portal.seed import seed_sample_accounts
 
 import app.models_registry  # noqa: F401
 from app.core.db import Base, get_engine
@@ -64,6 +65,7 @@ def add_sample_data(db: Session, password: str) -> dict[str, int]:
             if lead.created_at > now - timedelta(days=10):
                 lead.created_at = delivery_time(index, now) - timedelta(days=10)
         db.flush()
+        seed_sample_accounts(db, password)
         result = counts(db)
         short = {name: count for name, count in result.items() if count < TARGET}
         if short:
@@ -318,6 +320,7 @@ def add_sample_data(db: Session, password: str) -> dict[str, int]:
             existing_names.add(name)
     db.flush()
 
+    seed_sample_accounts(db, password)
     result = counts(db)
     short = {name: count for name, count in result.items() if count < TARGET}
     if short:

@@ -18,8 +18,10 @@ export default function ThankYouPage() {
             </dl>
           </>
         )}
+        <p>Our agent will discuss your enquiry and invite you to My solar when your customer account is ready.</p>
         <div className="actions">
-          <Link className="button primary" to="/">
+          <Link className="button primary" to="/customer">Open My solar</Link>
+          <Link className="button" to="/">
             Back to home
           </Link>
           <Link className="button" to="/enquiry">

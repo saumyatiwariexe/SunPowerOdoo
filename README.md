@@ -128,3 +128,29 @@ Password for all: set in `seed_all.py`.
 | Samarpreet Singh | ____ |
 | Ekam | ____ |
 | Pranjal Kumar | ____ |
+
+## Customer portal and agent onboarding
+
+An enquiry creates a lead, not a login. Sales or director users contact the lead, open its detail page, and use **Customer portal access > Invite customer** with the confirmed customer email. New and lost leads cannot be invited. SendGrid emails a one-time, 24-hour password-setup link. The customer chooses their own password, then signs in at `/customer`. Passwords are hashed and never emailed. Resending a pending invitation invalidates the previous link; active accounts cannot be re-invited.
+
+Access is tied to the exact customer record selected by the agent, not a matching phone number. One account per customer and one customer account per email are supported. Separate customer records must not be linked automatically. Customers can view their enquiry, survey and installation progress, issued quotes/invoices and payment balances, equipment/warranties, and create service requests for their equipment. Quotes and invoices print/save as PDF. Online payments, online quote acceptance and self-service password resets are not included.
+
+From `backend/`, run the additive migration once (no seed required):
+
+```powershell
+.\.venv\Scripts\python.exe migrate_customer_accounts.py
+```
+
+Configure the repository root `.env`, then restart the API:
+
+```dotenv
+SENDGRID_API_KEY=your-mail-send-api-key
+SENDGRID_FROM_EMAIL=your-verified-sender@example.com
+CUSTOMER_PORTAL_URL=https://your-customer-facing-site.example
+```
+
+Use a SendGrid API key with Mail Send permission and a [verified sender](https://www.twilio.com/docs/sendgrid/for-developers/sending-email/sender-identity). `CUSTOMER_PORTAL_URL` is the site's base URL reachable by customers (no `/customer` suffix); localhost links only work on the same computer. Use HTTPS and `SECURE_COOKIES=true` for deployment. Keep keys in the backend environment, never in `VITE_` variables or Git. Twilio Verify/SMS credentials are not used by this flow.
+
+Without email configuration, invitations fail explicitly. The account invitation is saved before sending; if SendGrid fails, retry the invitation. A successful response means SendGrid accepted the email, not that it reached the inbox. Automated tests mock delivery; verify real delivery after configuring your account. Click/open tracking is disabled for invitation emails. Raw invitation tokens are not stored and are removed from the browser address bar when the activation page opens.
+
+Customer sessions use a separate, two-hour HttpOnly cookie and cannot access staff APIs. Login and invitations are rate limited per API process; shared rate limiting is needed for multiple public workers. The portal currently shows the latest 50 records per section and up to 100 equipment units.

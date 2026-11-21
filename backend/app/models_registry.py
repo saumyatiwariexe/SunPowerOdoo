@@ -11,6 +11,7 @@ import app.modules.quotes.models  # noqa: F401
 import app.modules.surveys.models  # noqa: F401
 import app.modules.tickets.models  # noqa: F401
 import app.modules.users.models  # noqa: F401
+import app.modules.portal.models  # noqa: F401
 import app.modules.warranty.models  # noqa: F401
 
 # Person D modules
