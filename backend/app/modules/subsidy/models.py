@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from sqlalchemy import BigInteger, Enum, ForeignKey, String, Text
+from sqlalchemy import BigInteger, Enum, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, TimestampMixin
@@ -34,3 +34,6 @@ class SubsidyClaim(TimestampMixin, Base):
     amount_paise: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
     reference_no: Mapped[str | None] = mapped_column(String(120), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+claim_order_index = Index("uq_subsidy_claim_order", SubsidyClaim.order_id, unique=True)

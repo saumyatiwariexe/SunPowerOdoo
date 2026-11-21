@@ -13,7 +13,9 @@ from app.main import create_app
 from app.modules.catalog.models import Package, Product, SystemType
 from app.modules.catalog.service import get_package_bom
 from app.modules.users.models import Role, User
+from app.modules.inventory.models import SerialUnit, StockMovement
 from seed.seed_catalog import seed_catalog
+from seed.seed_inventory import seed_inventory
 
 PRODUCTS = "/api/v1/products"
 PACKAGES = "/api/v1/packages"
@@ -178,12 +180,37 @@ def test_demo_seed_system_sizes_and_installation(engine):
                 assert package.name == "Solar Panel Set"
                 assert "INSTALLATION" not in parts
             else:
+                assert parts["CONTROLLER"] == 1
                 assert parts["INSTALLATION"] == 1
                 assert parts["PANEL-500"] == 2 * package.capacity_kw
             assert package.price_paise == sum(item.product.price_paise * item.qty for item in items)
         db.rollback()
     with Session(engine) as db:
         assert db.scalar(select(Package.id).limit(1)) is None
+
+
+def test_reseed_upgrades_existing_controller_stock_and_kit_once(engine):
+    with Session(engine) as db:
+        seed_catalog(db)
+        controller = db.scalar(select(Product).where(Product.sku == "CONTROLLER"))
+        kit = db.scalar(select(Package).where(Package.name == "On-Grid 3 kW"))
+        list_price = kit.price_paise
+        kit.items.remove(next(item for item in kit.items if item.product_id == controller.id))
+        kit.price_paise -= controller.price_paise
+        controller.tracks_serial = False
+        controller.warranty_months = None
+        seed_inventory(db)
+        count = controller.on_hand
+        for _ in range(2):
+            seed_catalog(db)
+            seed_inventory(db)
+        assert (controller.tracks_serial, controller.warranty_months) == (True, 24)
+        assert kit.price_paise == list_price
+        assert sum(item.qty for item in kit.items if item.product_id == controller.id) == 1
+        serials = list(db.scalars(select(SerialUnit.serial_no).where(SerialUnit.product_id == controller.id)))
+        assert len(set(serials)) == count == controller.on_hand
+        purchases = list(db.scalars(select(StockMovement).where(StockMovement.product_id == controller.id)))
+        assert len(purchases) == 1
 
 
 def test_public_catalog_includes_systems_and_hardware_package(client, engine):

@@ -30,6 +30,8 @@ from app.modules.quotes.models import Quote, QuoteStatus
 from app.modules.quotes.service import convert_to_order
 from app.modules.users.models import Customer, Role, User
 from app.modules.warranty.models import Warranty
+from app.modules.subsidy.models import SubsidyClaim
+from seed.seed_subsidy import backfill_subsidy_claims
 from seed.seed_catalog import seed_catalog
 
 API = "/api/v1"
@@ -145,12 +147,12 @@ def test_r2_and_r3_real_survey_approval_then_package_quote(workspace):
         assert db.get(Lead, stage.lead_id).status == LeadStatus.QUOTED
 
 
-def add_order(stage, quote_number):
+def add_order(stage, quote_number, subsidy=0):
     with Session(stage.engine) as db:
         lead = db.get(Lead, stage.lead_id)
         quote = Quote(
             number=quote_number, lead_id=lead.id, customer_id=lead.customer_id, package_id=stage.package_id,
-            subtotal_paise=101, total_paise=101, status=QuoteStatus.ACCEPTED,
+            subtotal_paise=101 + subsidy, subsidy_paise=subsidy, total_paise=101, status=QuoteStatus.ACCEPTED,
             valid_until=datetime.now(UTC).date() + timedelta(days=1),
         )
         db.add(quote)
@@ -238,6 +240,33 @@ def test_r4_and_r5_confirm_at_exact_threshold_once(workspace):
     with Session(stage.engine) as db:
         assert db.scalar(select(func.count()).select_from(InstallJob)) == 1
         assert db.scalar(select(func.count()).select_from(Delivery)) == 1
+
+
+def test_subsidy_claim_is_created_once_only_for_interested_confirmed_orders(workspace):
+    stage = workspace
+    _, uninterested = confirmed_job(stage, "QT-NO-CLAIM")
+    assert stage.client.get(f"{API}/subsidy").json()["data"] == []
+    pending = add_order(stage, "QT-CLAIM", subsidy=15)
+    with Session(stage.engine) as db:
+        db.get(Lead, stage.lead_id).subsidy_interest = True
+        db.commit()
+    confirm = f"{API}/orders/{pending}/confirm"
+    assert stage.client.post(confirm).status_code == 409
+    assert stage.client.get(f"{API}/subsidy").json()["data"] == []
+    record_advance(stage, pending, 31)
+    assert stage.client.post(confirm).status_code == 200
+    assert stage.client.post(confirm).status_code == 200
+    claims = stage.client.get(f"{API}/subsidy").json()["data"]
+    assert [(c["order_id"], c["amount_paise"], c["status"]) for c in claims] == [(pending, 15, "NOT_APPLIED")]
+    claim_url = f"{API}/subsidy/{claims[0]['id']}"
+    assert stage.client.patch(claim_url, json={"status": "SUBMITTED", "scheme": "Roof grant"}).status_code == 200
+    with Session(stage.engine) as db:
+        # The first order now represents a previously confirmed, newly eligible order.
+        backfill_subsidy_claims(db)
+        backfill_subsidy_claims(db)
+        assert set(db.scalars(select(SubsidyClaim.order_id))) == {uninterested, pending}
+        db.commit()
+    assert stage.client.get(claim_url).json()["data"]["scheme"] == "Roof grant"
 
 
 def test_r5_failure_rolls_back_delivery_job_and_confirmation(workspace, monkeypatch):
@@ -390,9 +419,16 @@ def test_core_chain_lead_to_warranty_and_ticket_billing(workspace):
         assert stock.status_code == 200, stock.text
         serials.extend((line["sku"], number) for number in numbers)
         for number in numbers:
+            if line["sku"] == "CONTROLLER":
+                continue
             scanned = client.post(f"{path}/scan", json={"serial_no": number})
             assert scanned.status_code == 200, scanned.text
 
+    controller = next(number for sku, number in serials if sku == "CONTROLLER")
+    missing = client.post(f"{path}/dispatch")
+    assert missing.status_code == 409
+    assert "Charge controller" in missing.json()["error"]["message"]
+    assert client.post(f"{path}/scan", json={"serial_no": controller}).status_code == 200
     already_scanned = serials[0][1]
     assert client.post(f"{path}/scan", json={"serial_no": already_scanned}).status_code == 409
     assert client.post(

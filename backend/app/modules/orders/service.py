@@ -62,12 +62,14 @@ def confirm(db: Session, order_id: int) -> Order:
 
     from app.modules.deliveries.service import create_for_order as create_delivery
     from app.modules.installs.service import create_for_order
+    from app.modules.subsidy.service import create_for_interested_order
 
     order.status = OrderStatus.CONFIRMED
     order.confirmed_at = datetime.now(UTC)
     db.flush()
     create_delivery(db, order.id)
     create_for_order(db, order.id)
+    create_for_interested_order(db, order)
     return order
 
 

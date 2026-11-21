@@ -19,6 +19,7 @@ from app.core.db import Base, get_engine
 from app.core.numbering import seed_counters
 from seed.seed_users import seed_users
 from seed.seed_leads import seed_leads
+from seed.seed_subsidy import backfill_subsidy_claims
 
 
 def run_all() -> None:
@@ -52,6 +53,8 @@ def run_all() -> None:
         _try_seed(db, "seed.seed_surveys", "seed_surveys")
         _try_seed(db, "seed.seed_installs", "seed_installs")
         _try_seed(db, "seed.seed_tickets", "seed_tickets")
+        backfill_subsidy_claims(db)
+        db.commit()
 
     print("Seed complete.")
 

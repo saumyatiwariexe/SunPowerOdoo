@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.modules.catalog.models import INSTALLATION_SKU, Package, Product, ProductCategory, SystemType
+from app.modules.catalog.models import INSTALLATION_SKU, Package, PackageItem, Product, ProductCategory, SystemType
 from app.modules.catalog.schemas import PackageCreate, PackageItemInput
 from app.modules.catalog.service import create_package
 
@@ -11,7 +11,7 @@ PRODUCTS = (
     ("WIRING", "Wiring kit", ProductCategory.WIRING, 110_000, 150_000, None),
     ("SAFETY", "DC protection kit", ProductCategory.SAFETY, 90_000, 130_000, None),
     ("BATTERY", "Battery module", ProductCategory.BATTERY, 850_000, 1_100_000, 24),
-    ("CONTROLLER", "Charge controller", ProductCategory.CHARGE_CONTROLLER, 200_000, 290_000, None),
+    ("CONTROLLER", "Charge controller", ProductCategory.CHARGE_CONTROLLER, 200_000, 290_000, 24),
     (INSTALLATION_SKU, "Installation service", ProductCategory.SERVICE, 380_000, 600_000, None),
 )
 
@@ -39,7 +39,12 @@ def seed_catalog(db: Session) -> None:
             db.add(product)
     db.flush()
 
-    existing = set(db.scalars(select(Package.name)))
+    controller = products["CONTROLLER"]
+    controller.tracks_serial = True
+    if controller.warranty_months is None:
+        controller.warranty_months = 24
+
+    existing = {pkg.name: pkg for pkg in db.scalars(select(Package))}
     specs = [("Solar Panel Set", None, None, {"PANEL-500": 2, "STAND": 1, "WIRING": 1})]
     for kw in range(1, 6):
         for label, system_type in (("On-Grid", SystemType.ON_GRID), ("Off-Grid", SystemType.OFF_GRID)):
@@ -48,15 +53,23 @@ def seed_catalog(db: Session) -> None:
                 "STAND": kw,
                 "WIRING": 1,
                 "SAFETY": 1,
+                "CONTROLLER": 1,
                 f"INV-{kw}": 1,
                 INSTALLATION_SKU: 1,
             }
             if system_type == SystemType.OFF_GRID:
-                parts.update(BATTERY=kw, CONTROLLER=1)
+                parts["BATTERY"] = kw
             specs.append((f"{label} {kw} kW", system_type, kw, parts))
 
     for name, system_type, capacity_kw, parts in specs:
         if name in existing:
+            package = existing[name]
+            if (package.system_type == system_type == SystemType.ON_GRID and package.capacity_kw == capacity_kw
+                    and all(item.product_id != controller.id for item in package.items)):
+                # Preserve negotiated prices. Reprice only an unmodified list-price kit.
+                if package.price_paise == sum(item.product.price_paise * item.qty for item in package.items):
+                    package.price_paise += controller.price_paise
+                package.items.append(PackageItem(product_id=controller.id, qty=1))
             continue
         create_package(
             db,

@@ -2,8 +2,23 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
+from app.modules.leads.models import Lead
+from app.modules.orders.models import Order
+from app.modules.quotes.models import Quote
 from app.modules.subsidy.models import SubsidyClaim, SubsidyStatus
 from app.modules.subsidy.schemas import SubsidyClaimUpdate
+
+
+def create_for_interested_order(db: Session, order: Order) -> None:
+    """Called while holding the order lock, including during legacy backfill."""
+    amount = db.scalar(
+        select(Quote.subsidy_paise).join(Lead, Lead.id == Quote.lead_id)
+        .where(Quote.id == order.quote_id, Lead.subsidy_interest.is_(True))
+    )
+    if amount is None or db.scalar(select(SubsidyClaim.id).where(SubsidyClaim.order_id == order.id)):
+        return
+    db.add(SubsidyClaim(order_id=order.id, amount_paise=amount, scheme="Scheme pending"))
+    db.flush()
 
 
 def _get_or_404(db: Session, claim_id: int) -> SubsidyClaim:
