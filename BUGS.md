@@ -63,6 +63,22 @@ passed. A fresh Vite process without a shell API override used the saved root
 configuration and retrieved the release database's existing 10 leads. No existing
 database was seeded, reset or migrated during this investigation.
 
+## Faster data entry verification
+
+| ID | Severity | Module and owner | Reproduction steps and result | Status | Fix commit |
+| --- | --- | --- | --- | --- | --- |
+| UX-01 | P2 | Lead calls and record selection · A/B/C/D | Open a new lead and log a call: the outcome previously required typing. Quote, invoice, receiving, crew and ticket forms required remembered numeric IDs. Calls now offer quick answers; these forms and surveys use searchable database choices with names and identifying details. | fixed | `bac6806` |
+
+All 43 backend tests and the frontend build passed. The reusable
+`scripts/smoke_quick_forms.cjs` passed actual form submissions for calls, surveys,
+quotes, invoices, stock, crew and ticket assignment at 375px against a new temporary
+SQLite database. It also verified choice loading, failure and retry. The existing
+mobile survey and role-redirect smoke passed. Screenshots were reviewed at mobile
+and desktop sizes. The design detector reported only the existing font choice.
+The original checkout was fast-forwarded to the tested release, and its API was
+restarted on port 8000. Read-only verification through frontend 5173 confirmed
+the new controls and Saumya's existing Lead #6 in the unchanged `sunpower` database.
+
 ## Ten-line summary
 
 1. The release branch integrates the frontend, backend modules and nine-scene runner.
