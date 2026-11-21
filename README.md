@@ -80,6 +80,18 @@ once from `backend/` before restarting the API. It adds only the new role grant
 table and preserves existing staff and customer records. Directors can then
 grant staff access to additional non-director roles in Staff accounts.
 
+### Add a full sample cohort
+
+From `backend/`, set `DATABASE_URL` to the intended demo database and set
+`SAMPLE_DATA_PASSWORD` for the synthetic staff accounts. Then run
+`python -m seed.seed_sample_data --apply`. The script adds a connected cohort of
+300 solar jobs and verifies that **all 29 tables have at least 300 rows**. It is
+repeatable and does not delete existing records or reset the original demo users.
+Synthetic email addresses end in `.invalid`; photos and signatures are marked
+as sample content. Synthetic packages are inactive so they do not flood the
+public plan chooser, but remain visible in the staff catalog. Use a disposable
+database for QA runs.
+
 ## Tests
 
 From `backend/`, run `python -m pytest` in the Python 3.11 environment. The backend tests use in-memory SQLite.
