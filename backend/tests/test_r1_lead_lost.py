@@ -77,13 +77,13 @@ def lead(db, actor, customer):
 
 
 class TestR1LeadLost:
-    def test_mark_lost_requires_reason(self, db, lead, actor):
+    def test_mark_lost_requires_reason(self):
         """R1: cannot mark LOST without a reason."""
-        from app.core.errors import AppError
+        from pydantic import ValidationError
 
-        with pytest.raises(AppError) as exc_info:
-            mark_lost(db, lead.id, LeadLostIn(lost_reason=""), actor)
-        assert exc_info.value.status in (409, 422)
+        with pytest.raises(ValidationError) as exc_info:
+            LeadLostIn(lost_reason="")
+        assert exc_info.value.errors()[0]["loc"] == ("lost_reason",)
 
     def test_mark_lost_with_reason_succeeds(self, db, lead, actor):
         """R1: can mark LOST when reason is provided."""

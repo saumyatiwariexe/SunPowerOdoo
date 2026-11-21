@@ -58,7 +58,6 @@ class Lead(TimestampMixin, Base):
         Enum(LeadStatus, native_enum=False, create_constraint=True, validate_strings=True, name="lead_status"),
         default=LeadStatus.NEW,
         server_default="NEW",
-        index=True,
     )
     assigned_to_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     lost_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
