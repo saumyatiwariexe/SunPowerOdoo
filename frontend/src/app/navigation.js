@@ -39,6 +39,7 @@ export const homeFor = (role) =>
     CREW: 'installs',
     SUPPORT: 'tickets',
   }[role] || 'login')
+export const hasRole = (user, role) => user?.role === role || (role !== 'DIRECTOR' && user?.additional_roles?.includes(role))
 export const human = (value) =>
   String(value ?? '')
     .toLowerCase()

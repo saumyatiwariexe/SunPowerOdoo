@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
-from app.core.deps import require_roles
+from app.core.deps import has_role, require_roles
 from app.core.pagination import Pagination
 from app.modules.leads import service
 from app.modules.leads.schemas import LeadCallCreate, LeadCallOut, LeadCreate, LeadDetail, LeadLostIn, LeadOut, LeadUpdate, NewCustomerLead, SalesLeadSummary
@@ -25,7 +25,7 @@ def list_leads(
     status: str | None = None,
 ) -> dict:
     rows, total = service.list_leads(db, page=pg.page, page_size=pg.page_size, q=q, status=status)
-    schema = SalesLeadSummary if actor.role in {Role.SALES, Role.DIRECTOR} else LeadOut
+    schema = SalesLeadSummary if has_role(actor, Role.SALES) or has_role(actor, Role.DIRECTOR) else LeadOut
     return {"data": [schema.model_validate(r) for r in rows], "meta": pg.meta(total)}
 
 
@@ -48,7 +48,7 @@ def get_lead(
     actor: Annotated[User, Depends(AnyStaff)],
 ) -> dict:
     lead = service.get_lead(db, lead_id)
-    schema = LeadDetail if actor.role in {Role.SALES, Role.DIRECTOR} else LeadOut
+    schema = LeadDetail if has_role(actor, Role.SALES) or has_role(actor, Role.DIRECTOR) else LeadOut
     return {"data": schema.model_validate(lead)}
 
 

@@ -33,6 +33,7 @@ class UserRead(BaseModel):
     name: str
     email: str
     role: Role
+    additional_roles: list[Role]
     phone: str | None
     active: bool
 
@@ -47,9 +48,15 @@ class StaffCreate(LoginRequest):
     email: StaffEmail
     name: StaffName
     role: Role
+    additional_roles: list[Role] = Field(default_factory=list)
     phone: Phone | None = None
     hourly_rate_paise: HourlyRate = 0
     active: bool = True
+
+    @model_validator(mode="after")
+    def validate_grants(self) -> Self:
+        validate_role_grants(self.additional_roles, self.role)
+        return self
 
 
 class StaffPatch(BaseModel):
@@ -58,6 +65,7 @@ class StaffPatch(BaseModel):
     name: StaffName | None = None
     email: StaffEmail | None = None
     role: Role | None = None
+    additional_roles: list[Role] | None = None
     phone: Phone | None = None
     hourly_rate_paise: HourlyRate | None = None
     active: bool | None = None
@@ -67,7 +75,20 @@ class StaffPatch(BaseModel):
         for field in self.model_fields_set - {"phone"}:
             if getattr(self, field) is None:
                 raise ValueError(f"{field} cannot be null")
+        if self.additional_roles is not None:
+            validate_role_grants(self.additional_roles, self.role)
         return self
+
+
+def validate_role_grants(grants: list[Role], primary: Role | None) -> None:
+    if Role.DIRECTOR in grants:
+        raise ValueError("Director access cannot be granted as an extra role")
+    if len(grants) != len(set(grants)):
+        raise ValueError("Extra roles must be unique")
+    if primary in grants:
+        raise ValueError("The primary role cannot also be an extra role")
+    if primary == Role.DIRECTOR and grants:
+        raise ValueError("Director accounts do not need extra roles")
 
 
 class StaffRead(UserRead):

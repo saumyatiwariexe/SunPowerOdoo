@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import AppError
+from app.core.deps import has_role
 from app.core.pagination import Pagination
 from app.modules.orders import service as orders
 from app.modules.orders.models import OrderStatus
@@ -65,7 +66,7 @@ def schedule(db: Session, job_id: int, payload: InstallSchedule) -> InstallJob:
     users = db.scalars(
         select(User).where(User.id.in_(member_ids | current.keys())).order_by(User.id).with_for_update()
     )
-    active_crew = {user.id for user in users if user.active and user.role == Role.CREW}
+    active_crew = {user.id for user in users if user.active and has_role(user, Role.CREW)}
     if not member_ids <= active_crew:
         raise AppError("INVALID_CREW", "Assign only active crew members.", 409)
 

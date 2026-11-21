@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
+import { hasRole } from '../../app/navigation'
 import { DataTable, Heading, State, useRecord } from '../../app/records'
 export default function LookupPage() {
   const { currentUser } = useAuth()
@@ -45,7 +46,7 @@ export default function LookupPage() {
                 '',
                 (r) =>
                   r.customer_id &&
-                  ['SUPPORT', 'DIRECTOR'].includes(currentUser.role) && (
+                  (hasRole(currentUser, 'SUPPORT') || hasRole(currentUser, 'DIRECTOR')) && (
                     <Link
                       className="text-link"
                       to={'/tickets?new=1&serial=' + encodeURIComponent(r.serial_no)}

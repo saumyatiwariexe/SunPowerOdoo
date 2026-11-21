@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Path, Request, Response
 from sqlalchemy.orm import Session
@@ -9,7 +9,7 @@ from app.core.deps import get_current_user, require_roles
 from app.core.pagination import Pagination
 from app.core.security import SESSION_COOKIE, SESSION_COOKIE_PATH, create_session_token
 
-from .models import User
+from .models import Role, User
 from .schemas import LoginRequest, StaffCreate, StaffPage, StaffPatch, StaffRead, UserRead
 from .service import assignment_options, authenticate, create_staff, get_staff, list_staff, update_staff
 
@@ -61,8 +61,9 @@ def me(user: Annotated[User, Depends(get_current_user)]) -> dict[str, UserRead]:
 @router.get("/assignment-options", dependencies=[Depends(require_roles("DIRECTOR", "SUPPORT"))])
 def assignable_staff(
     db: Annotated[Session, Depends(get_db)], paging: Annotated[Pagination, Depends()],
+    role: Literal[Role.CREW, Role.SUPPORT] | None = None,
 ) -> dict:
-    rows, total = assignment_options(db, paging)
+    rows, total = assignment_options(db, paging, role)
     return {"data": rows, "meta": paging.meta(total)}
 
 

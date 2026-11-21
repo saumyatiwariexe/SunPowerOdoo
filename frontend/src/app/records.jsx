@@ -87,8 +87,8 @@ export function DataTable({ rows = [], columns, empty = 'No records yet.' }) {
         <tbody>
           {rows.map((r, i) => (
             <tr key={r.id ?? i}>
-              {columns.map(([key, , render]) => (
-                <td key={key}>{render ? render(r) : display(key, r[key])}</td>
+              {columns.map(([key, title, render]) => (
+                <td key={key} data-label={title || undefined}>{render ? render(r) : display(key, r[key])}</td>
               ))}
             </tr>
           ))}

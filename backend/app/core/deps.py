@@ -28,8 +28,13 @@ def require_roles(*roles: Role | str):
     allowed = frozenset(Role(role) for role in roles)
 
     def check_role(user: Annotated[User, Depends(get_current_user)]) -> User:
-        if user.role not in allowed:
+        if not any(has_role(user, role) for role in allowed):
             raise AppError("FORBIDDEN", "Your role does not allow this action.", 403)
         return user
 
     return check_role
+
+
+def has_role(user: User, role: Role | str) -> bool:
+    role = Role(role)
+    return user.role == role or (role != Role.DIRECTOR and role in user.additional_roles)

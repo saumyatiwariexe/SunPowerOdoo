@@ -2,7 +2,7 @@ import React from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './AuthContext.jsx'
 import Spinner from './components/Spinner.jsx'
-import { homeFor } from './navigation'
+import { hasRole, homeFor } from './navigation'
 
 export default function ProtectedRoute({ children, roles }) {
   const { currentUser, loading } = useAuth()
@@ -20,7 +20,7 @@ export default function ProtectedRoute({ children, roles }) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
-  if (roles && !roles.includes(currentUser.role)) {
+  if (roles && !roles.some((role) => hasRole(currentUser, role))) {
     return <Navigate to={homeFor(currentUser.role)} replace />
   }
 

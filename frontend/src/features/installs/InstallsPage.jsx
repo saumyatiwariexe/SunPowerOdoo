@@ -2,6 +2,7 @@ import React, { useRef } from 'react'
 import SignatureField from './SignatureField'
 import { api } from '../../app/api'
 import { useAuth } from '../../app/AuthContext'
+import { hasRole } from '../../app/navigation'
 import ActionForm from '../../app/ActionForm'
 import { Facts, display } from '../../app/records'
 import {
@@ -15,7 +16,7 @@ import {
 
 export function InstallsPage() {
   const { currentUser } = useAuth()
-  const mine = currentUser.role === 'CREW'
+  const mine = hasRole(currentUser, 'CREW') && !hasRole(currentUser, 'SUPPORT') && !hasRole(currentUser, 'DIRECTOR')
   return (
     <Collection
       title={mine ? 'My installations' : 'Installations'}
@@ -33,7 +34,8 @@ export function InstallsPage() {
 }
 export function InstallDetail() {
   const { currentUser } = useAuth()
-  const crew = currentUser.role === 'CREW'
+  const crew = hasRole(currentUser, 'CREW')
+  const scheduler = hasRole(currentUser, 'SUPPORT') || hasRole(currentUser, 'DIRECTOR')
   return (
     <RecordDetail title="Installations" base="/installs" singular="Installation">
       {(r, path, reload) => (
@@ -55,7 +57,7 @@ export function InstallDetail() {
               View customer signature
             </a>
           )}
-          {!crew && r.status === 'SCHEDULED' && (
+          {scheduler && r.status === 'SCHEDULED' && (
             <ActionForm
               primary
               submit="Save schedule"
@@ -70,7 +72,7 @@ export function InstallDetail() {
               onDone={reload}
             />
           )}
-          {crew && r.status === 'SCHEDULED' && (
+          {crew && r.crew.some((member) => member.user_id === currentUser.id) && r.status === 'SCHEDULED' && (
             <ActionForm
               primary
               submit="Start installation"
@@ -78,7 +80,7 @@ export function InstallDetail() {
               onDone={reload}
             />
           )}
-          {crew && r.status === 'IN_PROGRESS' && (
+          {crew && r.crew.some((member) => member.user_id === currentUser.id) && r.status === 'IN_PROGRESS' && (
             <>
               <ActionForm
                 submit="Upload site photo"

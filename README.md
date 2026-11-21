@@ -75,6 +75,11 @@ Run the seed only for initial setup or deliberate QA preparation, not on every
 restart. Keep the existing Docker database volume; `docker compose down -v`
 deletes it. Switching to a QA database does not migrate existing customer data.
 
+After pulling the staff permission update, run `python -m migrate_role_grants`
+once from `backend/` before restarting the API. It adds only the new role grant
+table and preserves existing staff and customer records. Directors can then
+grant staff access to additional non-director roles in Staff accounts.
+
 ## Tests
 
 From `backend/`, run `python -m pytest` in the Python 3.11 environment. The backend tests use in-memory SQLite.

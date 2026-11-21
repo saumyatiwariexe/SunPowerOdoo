@@ -12,16 +12,17 @@ const fields = [
   { name: 'email', label: 'Work email', type: 'email', maxLength: 254 },
   {
     name: 'role',
-    label: 'Role',
+    label: 'Primary role',
     options: ['SALES', 'SURVEYOR', 'WAREHOUSE', 'CREW', 'SUPPORT', 'DIRECTOR'],
   },
+  { name: 'additional_roles', label: 'Extra role access', checkboxes: ['SALES', 'SURVEYOR', 'WAREHOUSE', 'CREW', 'SUPPORT'], hint: 'Grant complete access to selected roles. Director access cannot be granted here.' },
   { name: 'phone', label: 'Phone', type: 'tel', optional: true, maxLength: 20 },
   { name: 'hourly_rate_paise', label: 'Hourly rate (₹)', type: 'money', value: '0.00' },
   { name: 'active', label: 'Account status', options: ['Active', 'Inactive'] },
 ]
 
 function staffPayload(values) {
-  return { ...values, phone: values.phone || null, active: values.active === 'Active' }
+  return { ...values, additional_roles: (values.additional_roles || []).filter((role) => role !== values.role && values.role !== 'DIRECTOR'), phone: values.phone || null, active: values.active === 'Active' }
 }
 
 export function StaffPage() {
@@ -58,6 +59,7 @@ export function StaffPage() {
         ],
         ['email', 'Work email'],
         ['role', 'Role', (row) => human(row.role)],
+        ['additional_roles', 'Extra access', (row) => row.additional_roles?.map(human).join(', ') || 'None'],
         ['hourly_rate_paise', 'Hourly rate'],
         ['active', 'Status', (row) => (row.active ? 'Active' : 'Inactive')],
       ]}
@@ -76,6 +78,7 @@ export function StaffDetail() {
             items={[
               ['Work email', row.email],
               ['Role', human(row.role)],
+              ['Extra access', row.additional_roles?.map(human).join(', ') || 'None'],
               ['Hourly rate', formatPaise(row.hourly_rate_paise)],
               ['Account status', row.active ? 'Active' : 'Inactive'],
               ['Phone', row.phone],
@@ -84,6 +87,7 @@ export function StaffDetail() {
           <details>
             <summary>Edit staff account</summary>
             <ActionForm
+              key={row.id + ':' + row.role + ':' + (row.additional_roles || []).join(',')}
               submit="Save staff account"
               primary
               fields={fields}

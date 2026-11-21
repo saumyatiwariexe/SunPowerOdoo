@@ -1,6 +1,7 @@
 import React from 'react'
 import { api } from '../../app/api'
 import { useAuth } from '../../app/AuthContext'
+import { hasRole } from '../../app/navigation'
 import ActionForm from '../../app/ActionForm'
 import { Facts, display } from '../../app/records'
 import ScheduleSurveyButton from './ScheduleSurveyButton'
@@ -15,7 +16,7 @@ import {
 
 export function SurveysPage() {
   const { currentUser } = useAuth()
-  const mine = currentUser.role === 'SURVEYOR'
+  const mine = hasRole(currentUser, 'SURVEYOR') && !hasRole(currentUser, 'SALES') && !hasRole(currentUser, 'DIRECTOR')
   return (
     <Collection
       title={mine ? 'My site surveys' : 'Site surveys'}
@@ -51,7 +52,7 @@ export function SurveyDetail() {
             ]}
           />
           <Photos photos={r.photos} />
-          {currentUser.role === 'SURVEYOR' && r.status === 'SCHEDULED' && (
+          {hasRole(currentUser, 'SURVEYOR') && r.surveyor_id === currentUser.id && r.status === 'SCHEDULED' && (
             <>
               <ActionForm
                 submit="Upload photo"
@@ -86,7 +87,7 @@ export function SurveyDetail() {
               />
             </>
           )}
-          {currentUser.role !== 'SURVEYOR' && r.status === 'SUBMITTED' && (
+          {(hasRole(currentUser, 'SALES') || hasRole(currentUser, 'DIRECTOR')) && r.status === 'SUBMITTED' && (
             <ActionForm
               primary
               submit="Save review"
