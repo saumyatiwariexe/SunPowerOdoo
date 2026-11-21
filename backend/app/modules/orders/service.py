@@ -1,13 +1,13 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.errors import AppError
-from app.core.module_dependencies import require_module
 from app.core.money import minimum_advance_paise
 from app.core.numbering import NumberPrefix, next_number
+from app.modules.billing.service import get_order_paid_paise
 
 from .models import Order, OrderStatus
 
@@ -38,13 +38,6 @@ def create_for_quote(db: Session, *, quote_id: int, customer_id: int, total_pais
     return order
 
 
-def _order_paid_paise(db: Session, order_id: int) -> int:
-    payment = require_module("app.modules.billing.models").Payment
-    return db.scalar(
-        select(func.coalesce(func.sum(payment.amount_paise), 0)).where(payment.order_id == order_id)
-    )
-
-
 def confirm(db: Session, order_id: int) -> Order:
     """Apply R4 and R5 in the caller's transaction."""
     # Billing takes the same order lock when it records a payment.
@@ -55,18 +48,18 @@ def confirm(db: Session, order_id: int) -> Order:
         raise AppError("ORDER_NOT_DRAFT", "Only a draft order can be confirmed.", 409)
 
     if order.advance_min_paise > 0:
-        paid_paise = _order_paid_paise(db, order_id)
+        paid_paise = get_order_paid_paise(db, order_id)
         if paid_paise < order.advance_min_paise:
             remaining = order.advance_min_paise - paid_paise
             raise AppError("ADVANCE_REQUIRED", f"Record {remaining} more paise to confirm this order.", 409)
 
-    deliveries = require_module("app.modules.deliveries.service")
+    from app.modules.deliveries.service import create_for_order as create_delivery
     from app.modules.installs.service import create_for_order
 
     order.status = OrderStatus.CONFIRMED
     order.confirmed_at = datetime.now(UTC)
     db.flush()
-    deliveries.create_for_order(db, order.id)
+    create_delivery(db, order.id)
     create_for_order(db, order.id)
     return order
 
@@ -76,5 +69,14 @@ def mark_installed(db: Session, order_id: int) -> Order:
     if order.status != OrderStatus.DISPATCHED:
         raise AppError("ORDER_NOT_DISPATCHED", "Dispatch the order before accepting installation.", 409)
     order.status = OrderStatus.INSTALLED
+    db.flush()
+    return order
+
+
+def mark_dispatched(db: Session, order_id: int) -> Order:
+    order = get_order(db, order_id, for_update=True)
+    if order.status != OrderStatus.CONFIRMED:
+        raise AppError("ORDER_NOT_CONFIRMED", "Confirm the order before dispatching it.", 409)
+    order.status = OrderStatus.DISPATCHED
     db.flush()
     return order

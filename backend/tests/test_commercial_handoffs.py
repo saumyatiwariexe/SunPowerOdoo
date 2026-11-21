@@ -1,10 +1,11 @@
 from datetime import UTC, datetime, timedelta
-import sys
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 
 import pytest
+from dateutil.relativedelta import relativedelta
 from fastapi.testclient import TestClient
-from sqlalchemy import Column, Integer, MetaData, Table, create_engine, event, func, select
+from sqlalchemy import create_engine, event, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
@@ -15,7 +16,9 @@ from app.core.deps import get_current_user
 from app.core.errors import AppError
 from app.core.numbering import seed_counters
 from app.main import create_app
+from app.modules.billing.models import Invoice
 from app.modules.catalog.models import Package
+from app.modules.deliveries.models import Delivery, DeliveryScan
 from app.modules.installs import service as installs
 from app.modules.installs.models import InstallJob, InstallStatus
 from app.modules.leads.models import Lead, LeadSource, LeadStatus, SystemType
@@ -24,6 +27,7 @@ from app.modules.orders.models import Order, OrderStatus
 from app.modules.quotes.models import Quote, QuoteStatus
 from app.modules.quotes.service import convert_to_order
 from app.modules.users.models import Customer, Role, User
+from app.modules.warranty.models import Warranty
 from seed.seed_catalog import seed_catalog
 
 API = "/api/v1"
@@ -39,21 +43,6 @@ def workspace(monkeypatch, tmp_path):
         connection.execute("PRAGMA foreign_keys=ON")
 
     db_module.Base.metadata.create_all(engine)
-    metadata = MetaData()
-    payments = Table(
-        "test_payments", metadata, Column("id", Integer, primary_key=True),
-        Column("order_id", Integer, nullable=False), Column("amount_paise", Integer, nullable=False),
-    )
-    deliveries = Table(
-        "test_deliveries", metadata, Column("order_id", Integer, primary_key=True),
-    )
-    metadata.create_all(engine)
-    billing = ModuleType("app.modules.billing.models")
-    billing.Payment = SimpleNamespace(order_id=payments.c.order_id, amount_paise=payments.c.amount_paise)
-    delivery_api = ModuleType("app.modules.deliveries.service")
-    delivery_api.create_for_order = lambda db, order_id: db.execute(deliveries.insert().values(order_id=order_id))
-    monkeypatch.setitem(sys.modules, billing.__name__, billing)
-    monkeypatch.setitem(sys.modules, delivery_api.__name__, delivery_api)
     monkeypatch.setattr(db_module, "get_engine", lambda: engine)
     settings = Settings(advance_percent=30, uploads_dir=tmp_path)
     monkeypatch.setattr(orders, "get_settings", lambda: settings)
@@ -63,6 +52,7 @@ def workspace(monkeypatch, tmp_path):
         for key, role in (
             ("director", Role.DIRECTOR), ("surveyor", Role.SURVEYOR),
             ("other_surveyor", Role.SURVEYOR), ("crew", Role.CREW), ("other_crew", Role.CREW),
+            ("warehouse", Role.WAREHOUSE), ("support", Role.SUPPORT),
         ):
             user = User(name=key, role=role, email=f"{key}@sunpower.test", password_hash="unused")
             db.add(user)
@@ -88,7 +78,7 @@ def workspace(monkeypatch, tmp_path):
     app.dependency_overrides[get_settings] = lambda: settings
     with TestClient(app) as client:
         yield SimpleNamespace(
-            engine=engine, payments=payments, deliveries=deliveries, client=client,
+            engine=engine, client=client,
             state=state, actors=actors, lead_id=lead_id, package_id=package_id, uploads_dir=tmp_path,
         )
     engine.dispose()
@@ -169,8 +159,8 @@ def add_order(stage, quote_number):
 
 
 def record_advance(stage, order_id, paise):
-    with stage.engine.begin() as connection:
-        connection.execute(stage.payments.insert().values(order_id=order_id, amount_paise=paise))
+    response = stage.client.post(f"{API}/orders/{order_id}/payments", json={"amount_paise": paise, "method": "UPI"})
+    assert response.status_code == 200, response.text
 
 
 def test_r4_and_r5_confirm_at_exact_threshold_once(workspace):
@@ -184,7 +174,7 @@ def test_r4_and_r5_confirm_at_exact_threshold_once(workspace):
     with Session(stage.engine) as db:
         assert db.get(Order, order_id).status == OrderStatus.DRAFT
         assert db.scalar(select(InstallJob.id)) is None
-        assert db.scalar(select(stage.deliveries.c.order_id)) is None
+        assert db.scalar(select(Delivery.id)) is None
 
     record_advance(stage, order_id, 1)
     confirmed = stage.client.post(url)
@@ -194,7 +184,7 @@ def test_r4_and_r5_confirm_at_exact_threshold_once(workspace):
     assert stage.client.post(url).json()["data"] == confirmed.json()["data"]
     with Session(stage.engine) as db:
         assert db.scalar(select(func.count()).select_from(InstallJob)) == 1
-        assert db.scalar(select(func.count()).select_from(stage.deliveries)) == 1
+        assert db.scalar(select(func.count()).select_from(Delivery)) == 1
 
 
 def test_r5_failure_rolls_back_delivery_job_and_confirmation(workspace, monkeypatch):
@@ -213,7 +203,7 @@ def test_r5_failure_rolls_back_delivery_job_and_confirmation(workspace, monkeypa
         order = db.get(Order, order_id)
         assert order.status == OrderStatus.DRAFT and order.confirmed_at is None
         assert db.scalar(select(InstallJob.id)) is None
-        assert db.scalar(select(stage.deliveries.c.order_id)) is None
+        assert db.scalar(select(Delivery.id)) is None
 
 
 def confirmed_job(stage, quote_number):
@@ -287,3 +277,132 @@ def test_r12_requires_photo_signature_and_valid_times(workspace):
     with Session(stage.engine) as db:
         assert db.get(InstallJob, job_id).status == InstallStatus.ACCEPTED
         assert db.get(Order, order_id).status == OrderStatus.INSTALLED
+
+
+def test_core_chain_lead_to_warranty_and_ticket_billing(workspace):
+    stage = workspace
+    client = stage.client
+    now = datetime.now(UTC)
+    request = client.post(
+        f"{API}/leads/{stage.lead_id}/survey",
+        json={"surveyor_id": stage.actors["surveyor"].id, "scheduled_at": now.isoformat()},
+    )
+    assert request.status_code == 201, request.text
+    survey_id = request.json()["data"]["id"]
+    stage.state.actor = stage.actors["surveyor"]
+    assert client.post(
+        f"{API}/surveys/{survey_id}/submit",
+        json={"roof_direction": "South", "tilt_degrees": 24, "cable_distance_m": 12},
+    ).status_code == 200
+    stage.state.actor = stage.actors["director"]
+    assert client.post(f"{API}/surveys/{survey_id}/approve", json={"note": "Approved"}).status_code == 200
+    draft = client.post(
+        f"{API}/quotes",
+        json={"lead_id": stage.lead_id, "package_id": stage.package_id,
+              "valid_until": (now.date() + timedelta(days=10)).isoformat()},
+    )
+    assert draft.status_code == 201, draft.text
+    path = f"{API}/quotes/{draft.json()['data']['id']}"
+    assert client.post(f"{path}/send").status_code == 200
+    order = client.post(f"{path}/accept").json()["data"]
+    record_advance(stage, order["id"], order["advance_min_paise"])
+    assert client.post(f"{API}/orders/{order['id']}/confirm").status_code == 200
+    competing_order = add_order(stage, "QT-COMPETING")
+    record_advance(stage, competing_order, 31)
+    assert client.post(f"{API}/orders/{competing_order}/confirm").status_code == 200
+
+    stage.state.actor = stage.actors["warehouse"]
+    deliveries = {row["order_id"]: row for row in client.get(f"{API}/deliveries").json()["data"]}
+    primary_delivery = deliveries[order["id"]]["id"]
+    competing_delivery = deliveries[competing_order]["id"]
+    path = f"{API}/deliveries/{primary_delivery}"
+    assert client.post(f"{path}/dispatch").json()["error"]["code"] == "INCOMPLETE_SERIAL_SCANS"
+    lines = client.get(path).json()["data"]["lines"]
+    assert all(line["sku"] != "INSTALLATION" for line in lines)
+    serials = []
+    for line in lines:
+        numbers = [f"CHAIN-{line['sku']}-{i}" for i in range(line["qty_required"])] if line["tracks_serial"] else []
+        stock = client.post(
+            f"{API}/stock/receive",
+            json={"product_id": line["product_id"], "qty": line["qty_required"],
+                  "purchase_cost_paise": 100, "serial_numbers": numbers},
+        )
+        assert stock.status_code == 200, stock.text
+        serials.extend((line["sku"], number) for number in numbers)
+        for number in numbers:
+            scanned = client.post(f"{path}/scan", json={"serial_no": number})
+            assert scanned.status_code == 200, scanned.text
+
+    already_scanned = serials[0][1]
+    assert client.post(f"{path}/scan", json={"serial_no": already_scanned}).status_code == 409
+    assert client.post(
+        f"{API}/deliveries/{competing_delivery}/scan", json={"serial_no": already_scanned}
+    ).status_code == 409
+    with Session(stage.engine) as db:
+        existing_scan = db.scalar(select(DeliveryScan).where(DeliveryScan.delivery_id == primary_delivery))
+        db.add(DeliveryScan(delivery_id=competing_delivery, serial_unit_id=existing_scan.serial_unit_id,
+                            scanned_by_id=stage.actors["warehouse"].id, scanned_at=now))
+        with pytest.raises(IntegrityError):
+            db.flush()
+
+    assert client.post(f"{path}/dispatch").status_code == 200
+    delivered = client.post(f"{path}/deliver")
+    assert delivered.status_code == 200, delivered.text
+    assert delivered.json()["data"]["status"] == "DELIVERED"
+    stage.state.actor = stage.actors["support"]
+    warranty_ids = []
+    for sku, number in serials:
+        warranty = client.get(f"{API}/lookup", params={"serial": number}).json()["data"]
+        months = 240 if sku == "PANEL-500" else 24
+        start = datetime.fromisoformat(warranty["start_date"]).date()
+        assert warranty["end_date"] == (start + relativedelta(months=months)).isoformat()
+        assert warranty["in_warranty"]
+        warranty_ids.append(warranty["warranty_id"])
+    assert len(set(warranty_ids)) == len(serials)
+    assert len(client.get(f"{API}/lookup", params={"phone": "9999999999"}).json()["data"]) == len(serials)
+
+    panel = next(number for sku, number in serials if sku == "PANEL-500")
+    inverter = next(number for sku, number in serials if sku.startswith("INV-"))
+    inverter_coverage = client.get(f"{API}/lookup", params={"serial": inverter}).json()["data"]
+    with Session(stage.engine) as db:
+        past = db.get(Warranty, inverter_coverage["warranty_id"])
+        past.start_date = now.date() - relativedelta(months=26)
+        past.end_date = past.start_date + relativedelta(months=24)
+        db.commit()
+    assert not client.get(f"{API}/lookup", params={"serial": inverter}).json()["data"]["in_warranty"]
+
+    for serial, expected_billable in ((panel, False), (inverter, True)):
+        response = client.post(
+            f"{API}/tickets", json={"serial_no": serial, "fault_code": "OUTPUT", "description": "Low output"}
+        )
+        assert response.status_code == 201, response.text
+        ticket = response.json()["data"]
+        assert ticket["billable"] is expected_billable
+        ticket_path = f"{API}/tickets/{ticket['id']}"
+        assert client.patch(ticket_path, json={"status": "IN_PROGRESS"}).status_code == 200
+        assert client.post(f"{ticket_path}/resolve", json={"resolution": "Output restored"}).status_code == 200
+        blocked = client.post(f"{ticket_path}/close")
+        assert blocked.status_code == 409
+        assert blocked.json()["error"]["code"] == "CUSTOMER_CONFIRMATION_REQUIRED"
+        assert client.post(f"{ticket_path}/confirm").status_code == 200
+        if expected_billable:
+            unpriced = client.post(f"{ticket_path}/close")
+            assert unpriced.status_code == 409
+            assert unpriced.json()["error"]["code"] == "BILLABLE_LINES_REQUIRED"
+        for kind, qty, unit_price in (("PART", 2, 500), ("LABOUR", 1, 600)):
+            line = {"type": kind, "description": kind, "qty": qty, "unit_price_paise": unit_price}
+            assert client.post(f"{ticket_path}/lines", json=line).status_code == 201
+        assert client.post(f"{ticket_path}/close").json()["error"]["code"] == "CUSTOMER_CONFIRMATION_REQUIRED"
+        assert client.post(f"{ticket_path}/confirm").status_code == 200
+        closed = client.post(f"{ticket_path}/close")
+        assert closed.status_code == 200, closed.text
+        closure = closed.json()["data"]
+        assert closure["ticket"]["status"] == "CLOSED"
+        assert (closure["invoice_id"] is not None) is expected_billable
+        assert client.post(f"{ticket_path}/close").json()["data"] == closure
+        if expected_billable:
+            invoice = client.get(f"{API}/invoices/{closure['invoice_id']}").json()["data"]
+            assert invoice["total_paise"] == 1_600
+            assert len(invoice["lines"]) == 2
+    with Session(stage.engine) as db:
+        assert db.scalar(select(func.count()).select_from(Invoice)) == 1

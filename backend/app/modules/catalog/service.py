@@ -46,6 +46,20 @@ def create_product(db: Session, payload: ProductCreate) -> Product:
     return product
 
 
+def adjust_stock(db: Session, product_id: int, change: int, cost_paise: int | None = None) -> Product:
+    product = get_product(db, product_id, for_update=True)
+    quantity = product.on_hand + change
+    if quantity < 0:
+        raise AppError("INSUFFICIENT_STOCK", f"Insufficient stock on hand for {product.name}.", 409)
+    if quantity > 2_147_483_647:
+        raise AppError("STOCK_QUANTITY_TOO_LARGE", "The new stock count exceeds the supported range.", 409)
+    product.on_hand = quantity
+    if cost_paise is not None:
+        product.cost_paise = cost_paise
+    db.flush()
+    return product
+
+
 def update_product(db: Session, product_id: int, payload: ProductPatch) -> Product:
     product = get_product(db, product_id, for_update=True)
     changes = payload.model_dump(exclude_unset=True)
