@@ -11,6 +11,8 @@ Stack: Python (FastAPI, SQLAlchemy, PostgreSQL) + React (Vite, Tailwind).
 - [DATA_MODEL.md](docs/DATA_MODEL.md): tables, fields, profit and warranty formulas
 - [FEATURES_BY_ROLE.md](docs/FEATURES_BY_ROLE.md): screens, endpoints, owners per role, demo script
 - [WORK_SPLIT.md](docs/WORK_SPLIT.md): who builds what, timeline, merge rules
+- [USER_GUIDE.md](docs/USER_GUIDE.md): every current screen, button, search and staff workflow
+- [CODEBASE_MANUAL.md](docs/CODEBASE_MANUAL.md): architecture, API areas and a file-by-file reference
 
 ## Local setup
 
