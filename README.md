@@ -38,15 +38,16 @@ python3.11 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-Start the API in the activated Python 3.11 environment from `backend/`.
+Create the database tables and load demo users, catalog, stock, and surveys, then start the API. Run both commands in the activated Python 3.11 environment from `backend/`.
 
 ```sh
+python -m seed.seed_all
 python -m uvicorn app.main:app --reload
 ```
 
-The API is available at `http://localhost:8000`, with interactive docs at `/docs` and a process health check at `/api/v1/public/health`. Once the team seed entry point lands, run `python -m seed.seed_all` from `backend/` to create tables and demo data for authenticated requests.
+The API is available at `http://localhost:8000`, with interactive docs at `/docs` and a process health check at `/api/v1/public/health`.
 
-In a separate terminal, run the frontend from `frontend/` once its package manifest is in place.
+In a separate terminal, run the frontend from `frontend/`.
 
 ```sh
 npm install

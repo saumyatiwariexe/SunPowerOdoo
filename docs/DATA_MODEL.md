@@ -63,10 +63,14 @@ Each owner defines their own tables in `modules/<name>/models.py` and references
 ```
 revenue   = sum(Invoice.totalPaise for the order)
 parts     = sum(SerialUnit.purchaseCostPaise for units on the order's delivery)
-            + sum(Product.costPaise * qty) for non-serial lines
+            + sum(dispatch unit cost * dispatched quantity) for non-serial lines
 labour    = sum((finishedAt - startedAt) hours * User.hourlyRatePaise) over InstallCrew
 profit    = revenue - parts - labour
 ```
+
+Director reports use India Standard Time and a Monday start for the week. Collected sums payments by receipt date. Outstanding sums the remaining balances on invoices issued in the selected period. Profit shows lifetime totals for jobs confirmed, dispatched, invoiced or completed during that period. Technician hours use the month the shift started.
+
+Confirming an order for a lead with subsidy interest creates one claim with the quoted subsidy amount and an initial status of `NOT_APPLIED`. Sales or the director can update the scheme and reference in the tracker.
 
 ## Warranty logic
 ```
@@ -74,6 +78,8 @@ startDate = Delivery.deliveredAt
 endDate   = startDate + Product.warrantyMonths months
 inWarranty(serial, today) = Warranty.status = ACTIVE and today <= endDate
 ```
+
+The seeded on-grid and off-grid kits each include one serialized charge controller with a 24-month warranty.
 
 ## Indexes to add (search must be instant)
 SerialUnit(serialNo), Lead(status), Ticket(status), Customer(phone), Quote(number), Order(number).

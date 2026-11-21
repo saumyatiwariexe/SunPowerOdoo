@@ -2,13 +2,16 @@ from functools import lru_cache
 from threading import Lock
 from time import monotonic
 
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
+from app.core.pagination import Pagination
 from app.core.security import hash_password, verify_password
 
-from .models import User
+from .models import Role, User
+from .schemas import StaffCreate, StaffPatch
 
 LOGIN_WINDOW_SECONDS = 60
 LOGIN_ATTEMPTS_PER_WINDOW = 10
@@ -48,4 +51,53 @@ def authenticate(db: Session, email: str, password: str) -> User:
     valid = verify_password(password, password_hash)
     if user is None or not user.active or not valid:
         raise AppError("INVALID_CREDENTIALS", "Invalid email or password.", 401)
+    return user
+
+
+def list_staff(db: Session, paging: Pagination) -> tuple[list[User], int]:
+    total = db.scalar(select(func.count()).select_from(User)) or 0
+    query = select(User).order_by(User.name, User.id).offset(paging.offset).limit(paging.page_size)
+    return list(db.scalars(query)), total
+
+
+def get_staff(db: Session, user_id: int, *, for_update: bool = False) -> User:
+    user = db.get(User, user_id, with_for_update=for_update, populate_existing=for_update)
+    if user is None:
+        raise AppError("USER_NOT_FOUND", "Staff account not found.", 404)
+    return user
+
+
+def _flush_staff(db: Session) -> None:
+    try:
+        db.flush()
+    except IntegrityError as exc:
+        constraint = getattr(getattr(exc.orig, "diag", None), "constraint_name", None)
+        if constraint == "users_email_key" or "UNIQUE constraint failed: users.email" in str(exc.orig):
+            raise AppError("EMAIL_IN_USE", "A staff account already uses this email.", 409) from exc
+        raise
+
+
+def create_staff(db: Session, payload: StaffCreate) -> User:
+    user = User(**payload.model_dump(exclude={"password"}), password_hash=hash_password(payload.password))
+    db.add(user)
+    _flush_staff(db)
+    return user
+
+
+def update_staff(db: Session, user_id: int, payload: StaffPatch, actor: User) -> User:
+    changes = payload.model_dump(exclude_unset=True)
+    if {"role", "active"} & changes.keys():
+        # Serialize access changes so concurrent edits cannot remove the final director.
+        directors = list(db.scalars(select(User.id).where(
+            User.role == Role.DIRECTOR, User.active.is_(True)
+        ).order_by(User.id).with_for_update()))
+        if actor.id not in directors:
+            raise AppError("FORBIDDEN", "Director access is required.", 403)
+        losing_access = changes.get("role", Role.DIRECTOR) != Role.DIRECTOR or changes.get("active") is False
+        if directors == [user_id] and losing_access:
+            raise AppError("LAST_DIRECTOR", "Keep at least one active director.", 409)
+    user = get_staff(db, user_id, for_update=True)
+    for field, value in changes.items():
+        setattr(user, field, value)
+    _flush_staff(db)
     return user

@@ -154,3 +154,53 @@ def test_public_health_and_cors(client):
     assert accepted.headers["access-control-allow-credentials"] == "true"
     headers["Origin"] = "https://untrusted.example"
     assert "access-control-allow-origin" not in client.options(LOGIN, headers=headers).headers
+
+
+def test_director_staff_directory_and_access_changes(client, engine):
+    base = "/api/v1/users"
+    with Session(engine) as db:
+        sales = db.scalar(select(User).where(User.role == Role.SALES))
+        sales_id = sales.id
+        director = User(name="Director", email="director@sunpower.test", role=Role.DIRECTOR,
+                        password_hash=sales.password_hash)
+        db.add(director)
+        db.commit()
+        director_id = director.id
+
+    assert client.get(base).status_code == 401
+    login(client)
+    assert client.get(base).status_code == 403
+    assert client.patch(f"{base}/{sales_id}", json={"role": "DIRECTOR"}).status_code == 403
+    assert client.post(LOGIN, json={"email": "director@sunpower.test", "password": PASSWORD}).status_code == 200
+    payload = {"name": "Field worker", "email": " CREW2@example.com ", "password": " secret with spaces ",
+               "role": "CREW", "phone": "555-0100", "hourly_rate_paise": 10425}
+    created = client.post(base, json=payload)
+    assert created.status_code == 201, created.text
+    row = created.json()["data"]
+    assert row["email"] == "crew2@example.com"
+    assert "password" not in row and "password_hash" not in row
+    detail = f"{base}/{row['id']}"
+    assert client.get(detail).json()["data"] == row
+    assert client.get(base, params={"page_size": 1, "page": 2}).json()["meta"]["total"] == 3
+    assert client.post(base, json=payload).json()["error"]["code"] == "EMAIL_IN_USE"
+    assert client.patch(detail, json={"hourly_rate_paise": 1.25}).status_code == 400
+    assert client.patch(detail, json={"email": "sales@sunpower.test", "role": "SUPPORT"}).status_code == 409
+    assert client.get(detail).json()["data"]["role"] == "CREW"
+    assert client.patch(f"{base}/{director_id}", json={"active": False}).json()["error"]["code"] == "LAST_DIRECTOR"
+    cookie = client.cookies.get("sunpower_session")
+    assert client.post(LOGIN, json={"email": row["email"], "password": payload["password"]}).status_code == 200
+    worker_cookie = client.cookies.get("sunpower_session")
+
+    def switch(token):
+        client.cookies.clear()
+        client.cookies.set("sunpower_session", token, path="/api/v1")
+
+    switch(cookie)
+    updated = client.patch(detail, json={"role": "SUPPORT", "phone": None, "hourly_rate_paise": 20001})
+    assert updated.json()["data"]["hourly_rate_paise"] == 20001
+    switch(worker_cookie)
+    assert client.get(ME).json()["data"]["role"] == "SUPPORT"
+    switch(cookie)
+    assert client.patch(detail, json={"active": False}).status_code == 200
+    switch(worker_cookie)
+    assert client.get(ME).status_code == 401
