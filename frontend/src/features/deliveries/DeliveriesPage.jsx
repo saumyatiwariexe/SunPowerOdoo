@@ -1,6 +1,7 @@
 import React from 'react'
 import { api } from '../../app/api'
 import { useAuth } from '../../app/AuthContext'
+import { hasRole } from '../../app/navigation'
 import ActionForm from '../../app/ActionForm'
 import { DataTable, Facts } from '../../app/records'
 import { Collection, RecordDetail, recordLink } from '../../app/RecordPage'
@@ -49,7 +50,7 @@ export function DeliveryDetail() {
               ],
             ]}
           />
-          {r.status === 'PENDING' && currentUser.role !== 'CREW' && (
+          {r.status === 'PENDING' && (hasRole(currentUser, 'WAREHOUSE') || hasRole(currentUser, 'DIRECTOR')) && (
             <>
               <ActionForm
                 submit="Scan serial"

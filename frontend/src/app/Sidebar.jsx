@@ -3,7 +3,7 @@ import { Link, NavLink } from 'react-router-dom'
 import Brand from './Brand'
 import AppIcon from './AppIcon'
 import { useAuth } from './AuthContext'
-import { homeFor, sections, human } from './navigation'
+import { hasRole, homeFor, sections, human } from './navigation'
 
 export default function Sidebar({ onClose }) {
   const { currentUser: user, logout } = useAuth()
@@ -17,7 +17,7 @@ export default function Sidebar({ onClose }) {
       </div>
       <nav aria-label="Workspace navigation">
         {sections.map(([label, items]) => {
-          const visible = items.filter(([, , , roles]) => roles.includes(user.role))
+          const visible = items.filter(([, , , roles]) => roles.some((role) => hasRole(user, role)))
           return (
             visible.length > 0 && (
               <section key={label}>
@@ -39,7 +39,7 @@ export default function Sidebar({ onClose }) {
           <Link to="/users" onClick={onClose} title="Staff profile">
             <strong>{user.name || user.email}</strong>
           </Link>
-          <small>{human(user.role)}</small>
+          <small>{[user.role, ...(user.additional_roles || [])].map(human).join(' · ')}</small>
         </div>
         <button onClick={logout} aria-label="Sign out" title="Sign out">
           <AppIcon name="exit" size={18} />

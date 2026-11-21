@@ -1,14 +1,15 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import AppError
+from app.core.deps import has_role
 from app.core.pagination import Pagination
 from app.modules.leads import service as leads
 from app.modules.leads.models import Lead, LeadStatus
 from app.modules.leads.schemas import LeadUpdate
-from app.modules.users.models import Customer, Role, User
+from app.modules.users.models import Customer, Role, User, UserRoleGrant
 
 from .models import Survey, SurveyPhoto, SurveyStatus
 from .schemas import SurveySchedule, SurveySubmit
@@ -65,7 +66,10 @@ def scheduling_options(db: Session, lead_id: int | None = None) -> dict:
         existing_id = db.scalar(select(Survey.id).where(
             Survey.lead_id == lead_id, Survey.status != SurveyStatus.REJECTED
         ))
-    surveyors = select(User.id, User.name, User.email).where(User.active.is_(True), User.role == Role.SURVEYOR)
+    surveyors = select(User.id, User.name, User.email).where(
+        User.active.is_(True),
+        or_(User.role == Role.SURVEYOR, User.role_grants.any(UserRoleGrant.role == Role.SURVEYOR)),
+    )
     return {
         "leads": [dict(row) for row in db.execute(eligible).mappings()],
         "surveyors": [dict(row) for row in db.execute(surveyors.order_by(User.name, User.id)).mappings()],
@@ -87,7 +91,7 @@ def schedule(db: Session, lead_id: int, payload: SurveySchedule, actor: User) ->
     if current is not None:
         raise AppError("SURVEY_EXISTS", "This lead already has a survey in progress.", 409)
     surveyor = db.get(User, payload.surveyor_id)
-    if surveyor is None or not surveyor.active or surveyor.role != Role.SURVEYOR:
+    if surveyor is None or not surveyor.active or not has_role(surveyor, Role.SURVEYOR):
         raise AppError("INVALID_SURVEYOR", "Select an active surveyor.", 409)
 
     if lead.status == LeadStatus.CONTACTED:

@@ -208,3 +208,42 @@ def test_director_staff_directory_and_access_changes(client, engine):
 def test_database_url_overrides_postgres_defaults(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "sqlite:///release-check.sqlite")
     assert str(Settings(_env_file=None).database_url) == "sqlite:///release-check.sqlite"
+
+
+def test_director_grants_and_revokes_extra_staff_roles(client, engine):
+    with Session(engine) as db:
+        sales = db.scalar(select(User).where(User.role == Role.SALES))
+        db.add(User(name="Director", email="director@sunpower.test", role=Role.DIRECTOR,
+                    password_hash=sales.password_hash))
+        db.commit()
+
+    assert client.post(LOGIN, json={"email": "director@sunpower.test", "password": PASSWORD}).status_code == 200
+    created = client.post("/api/v1/users", json={
+        "name": "Multi role worker", "email": "worker@sunpower.test", "password": PASSWORD,
+        "role": "CREW", "additional_roles": ["SALES", "SUPPORT"],
+    })
+    assert created.status_code == 201, created.text
+    worker_id = created.json()["data"]["id"]
+    assert created.json()["data"]["additional_roles"] == ["SALES", "SUPPORT"]
+    assert client.post("/api/v1/users", json={
+        "name": "Invalid", "email": "invalid@sunpower.test", "password": PASSWORD,
+        "role": "CREW", "additional_roles": ["DIRECTOR"],
+    }).status_code == 400
+    assert client.patch(f"/api/v1/users/{worker_id}", json={"additional_roles": ["SALES", "SALES"]}).status_code == 400
+
+    assert client.post(LOGIN, json={"email": "worker@sunpower.test", "password": PASSWORD}).status_code == 200
+    assert client.get(ME).json()["data"]["additional_roles"] == ["SALES", "SUPPORT"]
+    assert client.get("/api/v1/leads").status_code == 200
+    assert client.get("/api/v1/tickets").status_code == 200
+    assert client.get("/api/v1/director").status_code == 403
+    assert client.get("/api/v1/users").status_code == 403
+    assert any(row["id"] == worker_id for row in client.get("/api/v1/auth/assignment-options", params={"role": "CREW"}).json()["data"])
+
+    assert client.post(LOGIN, json={"email": "director@sunpower.test", "password": PASSWORD}).status_code == 200
+    updated = client.patch(f"/api/v1/users/{worker_id}", json={"additional_roles": ["SALES"]})
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["data"]["additional_roles"] == ["SALES"]
+    assert client.post(LOGIN, json={"email": "worker@sunpower.test", "password": PASSWORD}).status_code == 200
+    assert client.get("/api/v1/leads").status_code == 200
+    assert client.get("/api/v1/tickets").status_code == 403
+    assert client.get("/api/v1/director").status_code == 403

@@ -12,6 +12,7 @@ export default function ProfilePage() {
           ['Name', currentUser.name],
           ['Email', currentUser.email],
           ['Workspace role', human(currentUser.role)],
+          ['Extra access', currentUser.additional_roles?.map(human).join(', ') || 'None'],
           ['Staff ID', currentUser.id],
           ['Phone', currentUser.phone],
         ]}

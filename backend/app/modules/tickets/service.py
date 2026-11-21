@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import AppError
+from app.core.deps import has_role
 from app.core.numbering import NumberPrefix, next_number
 from app.core.pagination import Pagination
 from app.modules.billing import service as billing
@@ -70,7 +71,7 @@ def update(db: Session, ticket_id: int, payload: TicketPatch) -> Ticket:
     assignee_id = changes.get("assigned_to_id")
     if assignee_id is not None:
         assignee = db.get(User, assignee_id)
-        if assignee is None or not assignee.active or assignee.role not in {Role.CREW, Role.SUPPORT}:
+        if assignee is None or not assignee.active or not (has_role(assignee, Role.CREW) or has_role(assignee, Role.SUPPORT)):
             raise AppError("INVALID_TICKET_ASSIGNEE", "Assign an active crew or support user.", 409)
     for field, value in changes.items():
         setattr(ticket, field, value)

@@ -2,7 +2,7 @@ from functools import lru_cache
 from threading import Lock
 from time import monotonic
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -10,7 +10,7 @@ from app.core.errors import AppError
 from app.core.pagination import Pagination
 from app.core.security import hash_password, verify_password
 
-from .models import Role, User
+from .models import Role, User, UserRoleGrant
 from .schemas import StaffCreate, StaffPatch
 
 LOGIN_WINDOW_SECONDS = 60
@@ -60,12 +60,16 @@ def list_staff(db: Session, paging: Pagination) -> tuple[list[User], int]:
     return list(db.scalars(query)), total
 
 
-def assignment_options(db: Session, paging: Pagination) -> tuple[list[dict], int]:
-    filters = (User.active.is_(True), User.role.in_((Role.CREW, Role.SUPPORT)))
+def assignment_options(db: Session, paging: Pagination, role: Role | None = None) -> tuple[list[dict], int]:
+    eligible = (role,) if role is not None else (Role.CREW, Role.SUPPORT)
+    filters = (User.active.is_(True), or_(
+        User.role.in_(eligible),
+        User.role_grants.any(UserRoleGrant.role.in_(eligible)),
+    ))
     total = db.scalar(select(func.count()).select_from(User).where(*filters)) or 0
-    query = select(User.id, User.name, User.email, User.role).where(*filters).order_by(User.name, User.id)
-    rows = db.execute(query.offset(paging.offset).limit(paging.page_size)).mappings()
-    return [dict(row) for row in rows], total
+    query = select(User).where(*filters).order_by(User.name, User.id)
+    rows = db.scalars(query.offset(paging.offset).limit(paging.page_size))
+    return [dict(id=row.id, name=row.name, email=row.email, role=row.role) for row in rows], total
 
 
 def get_staff(db: Session, user_id: int, *, for_update: bool = False) -> User:
@@ -86,7 +90,8 @@ def _flush_staff(db: Session) -> None:
 
 
 def create_staff(db: Session, payload: StaffCreate) -> User:
-    user = User(**payload.model_dump(exclude={"password"}), password_hash=hash_password(payload.password))
+    user = User(**payload.model_dump(exclude={"password", "additional_roles"}), password_hash=hash_password(payload.password))
+    user.role_grants = [UserRoleGrant(role=role) for role in payload.additional_roles]
     db.add(user)
     _flush_staff(db)
     return user
@@ -94,6 +99,7 @@ def create_staff(db: Session, payload: StaffCreate) -> User:
 
 def update_staff(db: Session, user_id: int, payload: StaffPatch, actor: User) -> User:
     changes = payload.model_dump(exclude_unset=True)
+    grants = changes.pop("additional_roles", None)
     if {"role", "active"} & changes.keys():
         # Serialize access changes so concurrent edits cannot remove the final director.
         directors = list(db.scalars(select(User.id).where(
@@ -105,7 +111,20 @@ def update_staff(db: Session, user_id: int, payload: StaffPatch, actor: User) ->
         if directors == [user_id] and losing_access:
             raise AppError("LAST_DIRECTOR", "Keep at least one active director.", 409)
     user = get_staff(db, user_id, for_update=True)
+    if grants is not None:
+        if changes.get("role", user.role) == Role.DIRECTOR and grants:
+            raise AppError("INVALID_ROLE_GRANT", "Director accounts do not need extra roles.", 409)
+        if changes.get("role", user.role) in grants:
+            raise AppError("INVALID_ROLE_GRANT", "An extra role cannot match the primary role.", 409)
+        requested = set(grants)
+        user.role_grants = [grant for grant in user.role_grants if grant.role in requested]
+        existing = {grant.role for grant in user.role_grants}
+        user.role_grants.extend(UserRoleGrant(role=role) for role in requested - existing)
     for field, value in changes.items():
         setattr(user, field, value)
+    if changes.get("role") == Role.DIRECTOR:
+        user.role_grants.clear()
+    elif changes.get("role") is not None and grants is None:
+        user.role_grants = [grant for grant in user.role_grants if grant.role != user.role]
     _flush_staff(db)
     return user

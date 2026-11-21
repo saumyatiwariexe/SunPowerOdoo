@@ -39,7 +39,7 @@ export async function recordOptions(kind) {
     }))
   }
   if (kind === 'crew' || kind === 'assignees') {
-    return (await allRows('/auth/assignment-options')).filter((u) => kind !== 'crew' || u.role === 'CREW').map((u) => ({
+    return (await allRows('/auth/assignment-options', kind === 'crew' ? { role: 'CREW' } : {})).map((u) => ({
       value: u.id, label: `${u.name} · ${human(u.role)}`, detail: u.email,
     }))
   }

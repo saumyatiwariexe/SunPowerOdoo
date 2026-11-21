@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.core.db import get_db
-from app.core.deps import require_roles
+from app.core.deps import has_role, require_roles
 from app.core.errors import AppError
 from app.core.pagination import Pagination
 from app.core.uploads import IMAGE_FILENAME_PATTERN, save_image
@@ -32,7 +32,7 @@ class InstallCompletionForm(InstallCompletion):
 
 def _viewable_job(db: Session, job_id: int, actor: User) -> InstallJob:
     job = service.get_job(db, job_id)
-    if actor.role == Role.CREW:
+    if has_role(actor, Role.CREW) and not (has_role(actor, Role.SUPPORT) or has_role(actor, Role.DIRECTOR)):
         service.require_member(job, actor)
     return job
 

@@ -23,6 +23,7 @@ export default function ActionForm({
   const [error, setError] = useState('')
   const [errors, setErrors] = useState({})
   const [available, setAvailable] = useState({})
+  const [selectedRole, setSelectedRole] = useState(initial.role ?? fields.find((f) => f.name === 'role')?.options?.[0])
   const onAvailability = useCallback((name, ready) => setAvailable((prev) => ({ ...prev, [name]: ready })), [])
   const loadingChoices = fields.some((f) => f.lookup && !available[f.name])
   async function save(event) {
@@ -36,6 +37,7 @@ export default function ActionForm({
       const raw = new FormData(form)
       const values = {}
       for (const f of fields) {
+        if (f.checkboxes) { values[f.name] = raw.getAll(f.name); continue }
         if (f.multiple) { values[f.name] = raw.getAll(f.name).map(Number); continue }
         const text = raw.get(f.name)
         if (text == null || text === '' || (f.type === 'file' && !text.size)) continue
@@ -61,6 +63,19 @@ export default function ActionForm({
   return (
     <form className="action-form no-print" onSubmit={save}>
       {fields.map((f) => {
+        if (f.checkboxes) return (
+          <fieldset className="field permission-field" key={f.name} disabled={busy}>
+            <legend>{f.label}</legend>
+            {f.hint && <small>{f.hint}</small>}
+            <div className="permission-options">
+              {f.checkboxes.map((role) => <label key={role}>
+                <input type="checkbox" name={f.name} value={role} defaultChecked={(initial[f.name] || []).includes(role)} disabled={busy || selectedRole === role || selectedRole === 'DIRECTOR'} />
+                <span>{human(role)}</span>
+              </label>)}
+            </div>
+            {errors[f.name] && <small className="form-error">{errors[f.name]}</small>}
+          </fieldset>
+        )
         const props = {
           name: f.name,
           required: !f.optional,
@@ -74,7 +89,7 @@ export default function ActionForm({
             {f.lookup || f.record ? (
               <RecordSelect field={f} initial={initial[f.name] ?? f.value} busy={busy} onAvailability={onAvailability} />
             ) : f.options ? (
-              <select {...props}>
+              <select {...props} onChange={f.name === 'role' ? (event) => setSelectedRole(event.target.value) : undefined}>
                 {f.placeholder && <option value="" disabled>{f.placeholder}</option>}
                 {f.optional && <option value="">Unassigned</option>}
                 {f.options.map((v) => (

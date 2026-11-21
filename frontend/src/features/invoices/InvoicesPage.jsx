@@ -2,6 +2,7 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, formatPaise } from '../../app/api'
 import { useAuth } from '../../app/AuthContext'
+import { hasRole } from '../../app/navigation'
 import ActionForm from '../../app/ActionForm'
 import { DataTable, Facts } from '../../app/records'
 import { Collection, RecordDetail, recordLink, moneyLines } from '../../app/RecordPage'
@@ -32,7 +33,7 @@ export function InvoicesPage() {
       path="/invoices"
       empty="No invoices issued."
       create={
-        currentUser.role !== 'SUPPORT' && {
+        (hasRole(currentUser, 'SALES') || hasRole(currentUser, 'DIRECTOR')) && {
           label: 'Create invoice',
           fields: [{ name: 'order_id', label: 'Customer order', lookup: 'orders' }],
           action: (v) => api.post('/invoices', v),

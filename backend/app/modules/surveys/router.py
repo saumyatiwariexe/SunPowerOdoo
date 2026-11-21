@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.core.db import get_db
-from app.core.deps import require_roles
+from app.core.deps import has_role, require_roles
 from app.core.errors import AppError
 from app.core.pagination import Pagination
 from app.core.uploads import IMAGE_FILENAME_PATTERN, save_image
@@ -28,7 +28,7 @@ AppSettings = Annotated[Settings, Depends(get_settings)]
 
 def _viewable_survey(db: Session, survey_id: int, actor: User) -> Survey:
     result = service.get_survey(db, survey_id)
-    if actor.role == Role.SURVEYOR:
+    if has_role(actor, Role.SURVEYOR) and not (has_role(actor, Role.SALES) or has_role(actor, Role.DIRECTOR)):
         service.require_assigned(result, actor)
     return result
 
