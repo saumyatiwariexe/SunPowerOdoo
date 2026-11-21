@@ -11,17 +11,21 @@ export default function DashboardPage() {
   const [error, setError] = useState('')
   const summary = useRecord('/reports/summary?range=' + range)
   const unfinished = useRecord('/reports/unfinished')
-  const profit = useRecord('/reports/profit-per-job')
-  const hours = useRecord('/reports/technician-hours' + (month ? '?month=' + month : ''))
   const [sort, setSort] = useState('desc')
+  const profitQuery = new URLSearchParams({ range, sort })
+  const profit = useRecord('/reports/profit-per-job?' + profitQuery)
+  const hours = useRecord('/reports/technician-hours' + (month ? '?month=' + month : ''))
   async function download() {
     try {
       setError('')
-      const file = await api.getRaw('/reports/export.csv?range=' + range)
+      const hoursSelected = report === 'Technician hours'
+      const query = hoursSelected ? new URLSearchParams({ report: 'hours' }) : profitQuery
+      if (hoursSelected && month) query.set('month', month)
+      const file = await api.getRaw('/reports/export.csv?' + query)
       const url = URL.createObjectURL(await file.blob())
       const a = document.createElement('a')
       a.href = url
-      a.download = 'sunpower-profit.csv'
+      a.download = hoursSelected ? 'sunpower-hours.csv' : 'sunpower-profit.csv'
       a.click()
       setTimeout(() => URL.revokeObjectURL(url), 1000)
     } catch (err) {
@@ -127,10 +131,9 @@ export default function DashboardPage() {
       </div>
       {report === 'Profit per job' ? (
         <State resource={profit}>
+          <p>Lifetime totals for jobs confirmed, dispatched, invoiced or completed in the selected period.</p>
           <DataTable
-            rows={[...(profit.data || [])].sort(
-              (a, b) => (sort === 'desc' ? -1 : 1) * (a.profit_paise - b.profit_paise),
-            )}
+            rows={profit.data}
             empty="No job profit to report."
             columns={[
               ['order_number', 'Order'],

@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
@@ -7,10 +7,12 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.core.deps import require_roles
 from app.modules.reports import service
-from app.modules.reports.schemas import ProfitJobOut, SummaryOut, TechHoursOut, UnfinishedOut
 from app.modules.users.models import Role, User
 
 router = APIRouter(prefix="/reports", tags=["reports"])
+
+Period = Literal["today", "week", "month"]
+Sort = Literal["asc", "desc"]
 
 DirectorOnly = require_roles(Role.DIRECTOR)
 
@@ -30,8 +32,10 @@ def get_summary(
 def get_profit_per_job(
     db: Annotated[Session, Depends(get_db)],
     actor: Annotated[User, Depends(DirectorOnly)],
+    range: Period | None = None,
+    sort: Sort | None = None,
 ) -> dict:
-    return {"data": [r.model_dump() for r in service.profit_per_job(db)]}
+    return {"data": [r.model_dump() for r in service.profit_per_job(db, range, sort)]}
 
 
 @router.get("/unfinished", response_model=dict)
@@ -55,11 +59,14 @@ def get_technician_hours(
 def export_csv(
     db: Annotated[Session, Depends(get_db)],
     actor: Annotated[User, Depends(DirectorOnly)],
-    range: str = "month",
+    range: Period = "month",
+    report: Literal["profit", "hours"] = "profit",
+    sort: Sort = "desc",
+    month: str | None = None,
 ) -> Response:
-    csv_content = service.export_csv(db, range_=range)
+    csv_content = service.export_csv(db, range, report, month, sort)
     return Response(
         content=csv_content,
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=sunpower-report.csv"},
+        headers={"Content-Disposition": f"attachment; filename=sunpower-{report}.csv"},
     )

@@ -4,11 +4,13 @@ from datetime import date, datetime, time, timedelta, timezone
 
 from dateutil.relativedelta import relativedelta
 
-from sqlalchemy import func, select, text
+from sqlalchemy import bindparam, func, select, text
 from sqlalchemy.orm import Session
 
+from app.core.errors import AppError
 from app.modules.billing.models import Invoice, Payment
-from app.modules.installs.models import InstallJob
+from app.modules.installs.models import InstallCrew, InstallJob
+from app.modules.users.models import User
 from app.modules.reports.schemas import ProfitJobOut, SummaryOut, TechHoursOut, UnfinishedOut
 
 
@@ -46,7 +48,7 @@ def summary(db: Session, range_: str = "today") -> SummaryOut:
     outstanding_paise = db.scalar(select(func.sum(due)).where(*invoice_window, due > 0)) or 0
 
     jobs_completed = db.scalar(select(func.count(InstallJob.id)).where(
-        InstallJob.status == "COMPLETED", InstallJob.finished_at >= start, InstallJob.finished_at < end
+        InstallJob.status.in_(("COMPLETED", "ACCEPTED")), InstallJob.finished_at >= start, InstallJob.finished_at < end
     ))
     jobs_unfinished = _scalar(
         db,
@@ -54,7 +56,7 @@ def summary(db: Session, range_: str = "today") -> SummaryOut:
     )
     open_tickets = _scalar(
         db,
-        "SELECT COUNT(*) FROM tickets WHERE status NOT IN ('RESOLVED', 'CLOSED')",
+        "SELECT COUNT(*) FROM tickets WHERE status <> 'CLOSED'",
     )
     low_stock_count = _scalar(
         db,
@@ -73,10 +75,19 @@ def summary(db: Session, range_: str = "today") -> SummaryOut:
     )
 
 
-def profit_per_job(db: Session) -> list[ProfitJobOut]:
+def profit_per_job(db: Session, range_: str | None = None, sort: str | None = None) -> list[ProfitJobOut]:
     # Dispatch movements snapshot the unit cost. Prefer the actual purchase
     # costs of scanned units for a serialized line, including historical jobs.
-    query = text("""
+    activity_filter = ""
+    params = {}
+    if range_:
+        start, end = period_bounds(range_)
+        params = {"start": start, "end": end}
+        activity_filter = """WHERE (o.confirmed_at >= :start AND o.confirmed_at < :end)
+            OR (d.dispatched_at >= :start AND d.dispatched_at < :end)
+            OR (inv.issued_at >= :start AND inv.issued_at < :end)
+            OR (ij.finished_at >= :start AND ij.finished_at < :end)"""
+    query = text(f"""
         SELECT o.id AS order_id, o.number AS order_number, c.name AS customer_name,
                COALESCE(inv.total_paise, 0) AS revenue_paise,
                COALESCE((SELECT SUM(su.purchase_cost_paise)
@@ -96,10 +107,15 @@ def profit_per_job(db: Session) -> list[ProfitJobOut]:
         LEFT JOIN invoices inv ON inv.order_id = o.id
         LEFT JOIN deliveries d ON d.order_id = o.id AND d.status IN ('DISPATCHED', 'DELIVERED')
         LEFT JOIN install_jobs ij ON ij.order_id = o.id
+        {activity_filter}
         ORDER BY o.id DESC
-    """).columns(started_at=InstallJob.started_at.type, finished_at=InstallJob.finished_at.type)
+    """)
+    timestamp = InstallJob.started_at.type
+    if range_:
+        query = query.bindparams(bindparam("start", type_=timestamp), bindparam("end", type_=timestamp))
+    query = query.columns(started_at=timestamp, finished_at=timestamp)
     result = []
-    for row in db.execute(query).mappings():
+    for row in db.execute(query, params).mappings():
         duration = timedelta()
         if row.started_at and row.finished_at:
             duration = row.finished_at - row.started_at
@@ -110,6 +126,8 @@ def profit_per_job(db: Session) -> list[ProfitJobOut]:
             revenue_paise=row.revenue_paise, parts_paise=parts, labour_paise=labour,
             profit_paise=row.revenue_paise - parts - labour,
         ))
+    if sort:
+        result.sort(key=lambda job: job.profit_paise, reverse=sort == "desc")
     return result
 
 
@@ -139,60 +157,43 @@ def unfinished(db: Session) -> UnfinishedOut:
 
 
 def technician_hours(db: Session, month: str | None = None) -> list[TechHoursOut]:
-    """
-    month format: YYYY-MM  (defaults to current month)
-    Returns hours worked + amount due per technician from install jobs and tickets.
-    """
-    if month:
-        try:
-            y, m = month.split("-")
-            period = f"'{y}-{m}-01'::date"
-        except Exception:
-            period = "date_trunc('month', CURRENT_DATE)"
-    else:
-        period = "date_trunc('month', CURRENT_DATE)"
-
-    sql = f"""
-        SELECT
-            u.id AS user_id,
-            u.name,
-            u.hourly_rate_paise,
-            COALESCE(
-                SUM(
-                    EXTRACT(EPOCH FROM (ij.finished_at - ij.started_at)) / 3600.0
-                ),
-            0) AS hours_worked
-        FROM users u
-        JOIN install_crew ic ON ic.user_id = u.id
-        JOIN install_jobs ij ON ij.id = ic.install_job_id
-        WHERE ij.started_at >= {period}
-          AND ij.started_at < {period} + interval '1 month'
-          AND ij.finished_at IS NOT NULL
-        GROUP BY u.id, u.name, u.hourly_rate_paise
-        ORDER BY hours_worked DESC
-    """
-    rows = db.execute(text(sql)).mappings().all()
-    return [
-        TechHoursOut(
-            user_id=r["user_id"],
-            name=r["name"],
-            hours_worked=float(r["hours_worked"]),
-            hourly_rate_paise=int(r["hourly_rate_paise"]),
-            amount_due_paise=int(float(r["hours_worked"]) * int(r["hourly_rate_paise"])),
-        )
-        for r in rows
-    ]
-
-
-def export_csv(db: Session, range_: str = "month") -> str:
-    """Return a CSV string of profit-per-job data."""
-    rows = profit_per_job(db)
-    buf = io.StringIO()
-    writer = csv.DictWriter(
-        buf,
-        fieldnames=["order_id", "order_number", "customer_name", "revenue_paise", "parts_paise", "labour_paise", "profit_paise"],
+    try:
+        day = date.fromisoformat(month + "-01") if month else None
+    except ValueError as exc:
+        raise AppError("INVALID_REPORT_MONTH", "Use a report month in YYYY-MM format.", 400) from exc
+    start, end = period_bounds("month", day)
+    shifts = db.execute(
+        select(User.id, User.name, User.hourly_rate_paise, InstallJob.started_at, InstallJob.finished_at)
+        .select_from(InstallJob)
+        .join(InstallCrew, InstallCrew.install_job_id == InstallJob.id)
+        .join(User, User.id == InstallCrew.user_id)
+        .where(InstallJob.started_at >= start, InstallJob.started_at < end, InstallJob.finished_at.is_not(None))
+        .order_by(User.id)
     )
+    durations = {}
+    for user_id, name, rate, started, finished in shifts:
+        key = (user_id, name, rate)
+        durations[key] = durations.get(key, timedelta()) + (finished - started)
+    rows = [
+        TechHoursOut(
+            user_id=user_id, name=name, hourly_rate_paise=rate, hours_worked=duration / HOUR,
+            amount_due_paise=(duration // MICROSECOND) * rate // (HOUR // MICROSECOND),
+        )
+        for (user_id, name, rate), duration in durations.items()
+    ]
+    return sorted(rows, key=lambda row: (-row.hours_worked, row.user_id))
+
+
+def export_csv(db: Session, range_: str = "month", report: str = "profit", month: str | None = None,
+               sort: str = "desc") -> str:
+    if report == "hours":
+        rows = technician_hours(db, month)
+        fields = TechHoursOut.model_fields
+    else:
+        rows = profit_per_job(db, range_, sort)
+        fields = ProfitJobOut.model_fields
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=list(fields))
     writer.writeheader()
-    for row in rows:
-        writer.writerow(row.model_dump())
+    writer.writerows(row.model_dump() for row in rows)
     return buf.getvalue()

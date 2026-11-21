@@ -3,23 +3,26 @@ import { formatPaise } from '../../app/api'
 import { State, useRecord } from '../../app/records'
 
 function buckets(range, invoices) {
-  const now = new Date()
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  if (range === 'week') start.setDate(start.getDate() - ((start.getDay() + 6) % 7))
-  if (range === 'month') start.setDate(1)
+  // Use the same India business day as the report API, including on devices abroad.
+  const asBusinessDate = (timestamp) => new Date(timestamp + 330 * 60_000)
+  const now = asBusinessDate(Date.now())
+  const start = new Date(now)
+  start.setUTCHours(0, 0, 0, 0)
+  if (range === 'week') start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7))
+  if (range === 'month') start.setUTCDate(1)
   const groups = new Map()
   const hourly = range === 'today'
-  const key = (date) => (hourly ? date.getHours() : date.toLocaleDateString('en-IN'))
+  const key = (date) => (hourly ? date.getUTCHours() : date.getUTCDate())
   for (const day = new Date(start); day <= now;) {
     const label = hourly
-      ? day.toLocaleTimeString('en-IN', { hour: 'numeric' })
-      : day.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+      ? day.toLocaleTimeString('en-IN', { hour: 'numeric', timeZone: 'UTC' })
+      : day.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' })
     groups.set(key(day), { label, amount: 0 })
-    if (hourly) day.setHours(day.getHours() + 1)
-    else day.setDate(day.getDate() + 1)
+    if (hourly) day.setUTCHours(day.getUTCHours() + 1)
+    else day.setUTCDate(day.getUTCDate() + 1)
   }
   for (const invoice of invoices) {
-    const date = new Date(invoice.issued_at)
+    const date = asBusinessDate(Date.parse(invoice.issued_at))
     if (date >= start && date <= now) groups.get(key(date)).amount += invoice.total_paise
   }
   return [...groups.values()]

@@ -1,3 +1,5 @@
+import csv
+import io
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
@@ -20,7 +22,7 @@ from app.modules.billing.models import Invoice, Payment
 from app.modules.catalog.models import Package
 from app.modules.deliveries.models import Delivery, DeliveryScan
 from app.modules.installs import service as installs
-from app.modules.installs.models import InstallJob, InstallStatus
+from app.modules.installs.models import InstallCrew, InstallJob, InstallStatus
 from app.modules.leads.models import Lead, LeadSource, LeadStatus, SystemType
 from app.modules.orders import service as orders
 from app.modules.orders.models import Order, OrderStatus
@@ -181,6 +183,39 @@ def test_report_counts_cash_once_on_receipt_date(workspace):
     assert (data["revenue_paise"], data["collected_paise"], data["outstanding_paise"]) == (0, 70, 0)
 
 
+def test_profit_period_and_csv_return_the_same_jobs(workspace):
+    stage = workspace
+    job, current_id = confirmed_job(stage, "QT-CURRENT")
+    _, old_id = confirmed_job(stage, "QT-OLD")
+    with Session(stage.engine) as db:
+        db.get(Order, old_id).confirmed_at -= timedelta(days=45)
+        db.commit()
+    reports = f"{API}/reports"
+    for period in ("today", "week", "month"):
+        params = {"range": period, "sort": "asc"}
+        rows = stage.client.get(reports + "/profit-per-job", params=params).json()["data"]
+        assert [r["order_id"] for r in rows] == [current_id]
+        exported = stage.client.get(reports + "/export.csv", params=params)
+        assert list(csv.DictReader(io.StringIO(exported.text))) == [
+            {key: str(value) for key, value in row.items()} for row in rows
+        ]
+    with Session(stage.engine) as db:
+        shift = db.get(InstallJob, job)
+        shift.started_at = datetime(2025, 3, 1, 9, tzinfo=UTC)
+        shift.finished_at = shift.started_at + timedelta(minutes=30)
+        tech = db.get(User, stage.actors["crew"].id)
+        tech.hourly_rate_paise = 20000
+        db.add(InstallCrew(install_job_id=job, user_id=tech.id))
+        db.commit()
+    hours = stage.client.get(reports + "/technician-hours?month=2025-03").json()["data"]
+    assert [(r["hours_worked"], r["amount_due_paise"]) for r in hours] == [(0.5, 10000)]
+    for month, expected in [("2025-03", hours), ("2025-04", [])]:
+        response = stage.client.get(reports + "/export.csv", params={"report": "hours", "month": month})
+        reader = csv.DictReader(io.StringIO(response.text))
+        assert "hours_worked" in reader.fieldnames
+        assert list(reader) == [{k: str(v) for k, v in row.items()} for row in expected]
+
+
 def test_r4_and_r5_confirm_at_exact_threshold_once(workspace):
     stage = workspace
     order_id = add_order(stage, "QT-TEST-1")
@@ -263,7 +298,7 @@ def test_r12_requires_photo_signature_and_valid_times(workspace):
     stage = workspace
     job_id, order_id = confirmed_job(stage, "QT-PROOF")
     root = f"{API}/installs/{job_id}"
-    now = datetime.now(UTC)
+    now = datetime.now(UTC) - timedelta(hours=1)
     slot = schedule_data(stage, now, now + timedelta(hours=2))
     assert stage.client.patch(f"{root}/schedule", json=slot).status_code == 200
     stage.state.actor = stage.actors["crew"]
@@ -291,7 +326,14 @@ def test_r12_requires_photo_signature_and_valid_times(workspace):
     with Session(stage.engine) as db:
         db.get(Order, order_id).status = OrderStatus.DISPATCHED
         db.commit()
+    stage.state.actor = stage.actors["director"]
+    summary = f"{API}/reports/summary"
+    # Both states must count in the period that contains the recorded finish.
+    assert stage.client.get(summary).json()["data"]["jobs_completed"] == 1
+    stage.state.actor = stage.actors["crew"]
     assert stage.client.post(f"{root}/accept").json()["data"]["status"] == "ACCEPTED"
+    stage.state.actor = stage.actors["director"]
+    assert stage.client.get(summary).json()["data"]["jobs_completed"] == 1
     with Session(stage.engine) as db:
         assert db.get(InstallJob, job_id).status == InstallStatus.ACCEPTED
         assert db.get(Order, order_id).status == OrderStatus.INSTALLED
@@ -406,6 +448,9 @@ def test_core_chain_lead_to_warranty_and_ticket_billing(workspace):
         ticket_path = f"{API}/tickets/{ticket['id']}"
         assert client.patch(ticket_path, json={"status": "IN_PROGRESS"}).status_code == 200
         assert client.post(f"{ticket_path}/resolve", json={"resolution": "Output restored"}).status_code == 200
+        stage.state.actor = stage.actors["director"]
+        assert client.get(f"{API}/reports/summary").json()["data"]["open_tickets"] == 1
+        stage.state.actor = stage.actors["support"]
         blocked = client.post(f"{ticket_path}/close")
         assert blocked.status_code == 409
         assert blocked.json()["error"]["code"] == "CUSTOMER_CONFIRMATION_REQUIRED"
@@ -421,6 +466,9 @@ def test_core_chain_lead_to_warranty_and_ticket_billing(workspace):
         assert client.post(f"{ticket_path}/confirm").status_code == 200
         closed = client.post(f"{ticket_path}/close")
         assert closed.status_code == 200, closed.text
+        stage.state.actor = stage.actors["director"]
+        assert client.get(f"{API}/reports/summary").json()["data"]["open_tickets"] == 0
+        stage.state.actor = stage.actors["support"]
         closure = closed.json()["data"]
         assert closure["ticket"]["status"] == "CLOSED"
         assert (closure["invoice_id"] is not None) is expected_billable
