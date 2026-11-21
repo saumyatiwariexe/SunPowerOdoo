@@ -1377,3 +1377,61 @@ details[open] > summary {
   .package-list li { grid-template-columns: minmax(85px, auto) 1fr auto; }
   .capacity svg { width: 23px; height: 23px; }
 }
+
+@media screen {
+  .public-nav-short, .comparison-cards { display: none; }
+  .enquiry { grid-template-areas: "intro form" "next form"; grid-template-rows: auto 1fr; }
+  .form-intro { grid-area: intro; }
+  .enquiry-form-area { grid-area: form; min-width: 0; }
+  .enquiry-next { grid-area: next; align-self: start; margin-top: 0; }
+}
+
+@media screen and (max-width: 760px) {
+  .enquiry { grid-template-areas: "intro" "form" "next"; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; gap: 22px; padding-block: 28px 42px; }
+  .form-intro a { margin-bottom: 16px; }
+  .form-intro p { margin: 8px 0 0; }
+  .enquiry-next { max-width: none; padding: 18px; }
+  .enquiry-system-fields { grid-template-columns: minmax(0, 1fr); }
+  .enquiry-form-area input:not([type="checkbox"]), .enquiry-form-area select, .enquiry-form-area textarea { font-size: 16px; }
+  .enquiry-form-area input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; }
+  .enquiry-form-area button[type="submit"] { min-height: 50px; }
+  .financials { grid-template-columns: minmax(0, 1fr); }
+  .financials > div { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-right: 0; border-bottom: 1px solid #80687b; padding-block: 13px; }
+  .financials > div:last-child { border-bottom: 0; }
+  .financials dd { margin: 0; font-size: 1.4rem; text-align: right; }
+  .table-wrap { -webkit-overflow-scrolling: touch; }
+}
+
+@media screen and (max-width: 720px) {
+  .comparison-swipe, .comparison-scroll { display: none; }
+  .comparison-cards { display: grid; gap: 14px; }
+  .comparison-card { display: grid; gap: 16px; padding: 20px; background: white; border: 1px solid #e3d9e1; border-radius: 14px; }
+  .comparison-card-featured { background: #f8f2f7; border-color: #bca1b5; }
+  .comparison-card-top { display: flex; align-items: start; justify-content: space-between; gap: 8px; }
+  .comparison-card-top strong { display: block; color: #51364b; font-size: 1.5rem; line-height: 1.1; }
+  .comparison-card-top span:not(.rounded-full) { display: block; margin-top: 4px; color: #675d68; font-size: .82rem; }
+  .comparison-card-price { font-size: 1.45rem; font-weight: 700; color: #51364b; }
+  .comparison-card-price small { display: block; font-size: .75rem; font-weight: 400; color: #675d68; }
+  .comparison-card dl { display: grid; }
+  .comparison-card dl > div { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid #e3d9e1; font-size: .86rem; }
+  .comparison-card dt { color: #675d68; }
+  .comparison-card dd { margin: 0; font-weight: 650; text-align: right; }
+  .comparison-card .button { width: 100%; min-height: 44px; }
+}
+
+@media screen and (max-width: 600px) {
+  .public-head { height: 64px; padding-block: 0; gap: 8px; flex-wrap: nowrap; }
+  .public-head .brand { font-size: 1.1rem; white-space: nowrap; }
+  .public-head nav { gap: 10px; margin-left: auto; white-space: nowrap; }
+  .public-nav-wide, .public-nav-systems { display: none; }
+  .public-nav-short { display: inline; }
+  .public-head .button { min-height: 42px; padding-inline: 10px; }
+  .footer-main { padding-block: 34px; }
+  .workspace-main { padding: 20px 16px 48px; }
+  .topline { min-height: 56px; }
+  .topline > span:first-of-type, .topline > span:nth-of-type(2) { display: none; }
+  .topline-user span:first-child { display: none; }
+  .heading { align-items: start; }
+  .heading .actions { width: 100%; }
+  .heading .actions .button { min-height: 44px; }
+}
