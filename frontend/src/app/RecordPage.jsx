@@ -19,11 +19,14 @@ export function Collection({ title, path, columns, create, empty, tools, actions
           </button>
         )}
       </Heading>
-      {tools}
+      {tools && <div className="collection-tools">{tools}</div>}
+      <section className="collection-panel" aria-label={title + ' records'}>
+      <div className="collection-summary"><strong>{title}</strong><span>{result.meta ? `${result.meta.total} records` : 'Records'}</span></div>
       <State resource={result}>
         <DataTable rows={result.data} columns={columns} empty={empty} />
         <Pager page={page} setPage={setPage} meta={result.meta} />
       </State>
+      </section>
       {children}
       {open && (
         <Modal title={create.label} onClose={() => setOpen(false)}>
