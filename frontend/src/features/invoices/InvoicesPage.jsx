@@ -34,7 +34,7 @@ export function InvoicesPage() {
       create={
         currentUser.role !== 'SUPPORT' && {
           label: 'Create invoice',
-          fields: [{ name: 'order_id', label: 'Order ID', type: 'number', min: 1 }],
+          fields: [{ name: 'order_id', label: 'Customer order', lookup: 'orders' }],
           action: (v) => api.post('/invoices', v),
           onDone: (r) => navigate('/invoices/' + r.id),
         }

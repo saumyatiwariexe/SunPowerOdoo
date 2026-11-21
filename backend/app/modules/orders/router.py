@@ -24,6 +24,12 @@ def order_list(db: Db, paging: Annotated[Pagination, Depends()]) -> OrderPage:
     return OrderPage(data=[OrderRead.model_validate(row) for row in rows], meta=paging.meta(count))
 
 
+@router.get("/options")
+def options(db: Db, paging: Annotated[Pagination, Depends()]) -> dict:
+    rows, count = service.order_options(db, paging)
+    return {"data": rows, "meta": paging.meta(count)}
+
+
 @router.get("/{order_id}")
 def order_detail(
     order_id: OrderId, db: Db,

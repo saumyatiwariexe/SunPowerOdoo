@@ -9,6 +9,7 @@ from app.core.money import minimum_advance_paise
 from app.core.pagination import Pagination
 from app.core.numbering import NumberPrefix, next_number
 from app.modules.billing.service import get_order_paid_paise
+from app.modules.users.models import Customer
 
 from .models import Order, OrderStatus
 
@@ -17,6 +18,16 @@ def list_orders(db: Session, paging: Pagination) -> tuple[list[Order], int]:
     total = db.scalar(select(func.count()).select_from(Order)) or 0
     query = select(Order).order_by(Order.id.desc()).offset(paging.offset).limit(paging.page_size)
     return list(db.scalars(query)), total
+
+
+def order_options(db: Session, paging: Pagination) -> tuple[list[dict], int]:
+    total = db.scalar(select(func.count()).select_from(Order)) or 0
+    query = select(
+        Order.id, Order.number, Order.status, Order.total_paise,
+        Customer.name.label("customer_name"), Customer.phone,
+    ).join(Customer, Customer.id == Order.customer_id).order_by(Order.id.desc())
+    rows = db.execute(query.offset(paging.offset).limit(paging.page_size)).mappings()
+    return [dict(row) for row in rows], total
 
 
 def get_order(db: Session, order_id: int, *, for_update: bool = False) -> Order:

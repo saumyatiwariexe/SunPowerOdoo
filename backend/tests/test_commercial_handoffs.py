@@ -557,11 +557,14 @@ def test_scheduling_options_follow_contact_and_exclude_booked_visits(workspace):
         db.commit()
     data = stage.client.get(opts).json()["data"]
     assert data["leads"] == []
-    assert data["surveyors"] == [{"id": visit["surveyor_id"], "name": "surveyor"}]
+    assert data["surveyors"] == [{"id": visit["surveyor_id"], "name": "surveyor", "email": "surveyor@sunpower.test"}]
     denied = stage.client.post(lead_path + "/survey", json=visit)
     assert denied.status_code == 409 and "customer call" in denied.json()["error"]["message"]
     assert stage.client.post(lead_path + "/calls", json={"outcome": "Ready", "called_at": visit["scheduled_at"]}).is_success
-    assert stage.client.get(opts).json()["data"]["leads"] == [{"id": stage.lead_id, "name": "Customer"}]
+    assert stage.client.get(opts).json()["data"]["leads"] == [{
+        "id": stage.lead_id, "name": "Customer", "phone": "9999999999",
+        "requested_kw": 3, "status": "CONTACTED",
+    }]
     assert stage.client.post(lead_path + "/survey-request").is_success
     booked = stage.client.post(lead_path + "/survey", json=visit).json()["data"]
     data = stage.client.get(opts, params={"lead_id": stage.lead_id}).json()["data"]
@@ -607,3 +610,41 @@ def test_stock_and_invoice_pagination_keep_filtered_totals(workspace):
         assert len(first["data"]) == len(second["data"]) == 1
         assert first["data"][0]["id"] != second["data"][0]["id"]
         assert second["meta"]["page"] == 2
+
+
+def test_assignment_choices_are_active_minimal_paginated_and_role_protected(workspace):
+    stage = workspace
+    path = f"{API}/auth/assignment-options"
+    with Session(stage.engine) as db:
+        db.get(User, stage.actors["other_crew"].id).active = False
+        db.commit()
+    stage.state.actor = stage.actors["support"]
+    response = stage.client.get(path, params={"page_size": 1})
+    assert response.status_code == 200
+    assert response.json()["meta"]["total"] == 2
+    rows = response.json()["data"] + stage.client.get(path, params={"page_size": 1, "page": 2}).json()["data"]
+    assert {r["id"] for r in rows} == {stage.actors["crew"].id, stage.actors["support"].id}
+    assert all(set(r) == {"id", "name", "email", "role"} for r in rows)
+    assert all(r["name"] and r["email"] for r in rows)
+    stage.state.actor = stage.actors["crew"]
+    assert stage.client.get(path).status_code == 403
+    stage.client.app.dependency_overrides.pop(get_current_user)
+    assert stage.client.get(path).status_code == 401
+
+
+def test_order_choices_include_customer_reference_and_pagination(workspace):
+    stage = workspace
+    first = add_order(stage, "QT-OPTIONS-1")
+    second = add_order(stage, "QT-OPTIONS-2")
+    response = stage.client.get(f"{API}/orders/options", params={"page_size": 1})
+    assert response.status_code == 200
+    assert response.json()["meta"]["total"] == 2
+    row = response.json()["data"][0]
+    assert row["id"] == second
+    assert row["customer_name"] == "Customer"
+    assert row["phone"] == "9999999999"
+    assert row["number"].startswith("ORD-")
+    assert type(row["total_paise"]) is int
+    assert stage.client.get(f"{API}/orders/options", params={"page_size": 1, "page": 2}).json()["data"][0]["id"] == first
+    stage.state.actor = stage.actors["support"]
+    assert stage.client.get(f"{API}/orders/options").status_code == 403

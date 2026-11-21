@@ -65,9 +65,8 @@ export default function TicketDetail({ id, onClose, onChange }) {
                       fields={[
                         {
                           name: 'assigned_to_id',
-                          label: 'Crew or support staff ID',
-                          type: 'number',
-                          min: 1,
+                          label: 'Assigned staff',
+                          lookup: 'assignees',
                           optional: true,
                         },
                         { name: 'priority', label: 'Priority', options: priorities },

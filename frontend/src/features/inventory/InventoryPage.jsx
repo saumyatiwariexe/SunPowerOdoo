@@ -26,7 +26,7 @@ export default function InventoryPage() {
       create={{
         label: 'Receive stock',
         fields: [
-          { name: 'product_id', label: 'Product ID', type: 'number', min: 1 },
+          { name: 'product_id', label: 'Product', lookup: 'products' },
           { name: 'qty', label: 'Quantity', type: 'number', min: 1 },
           { name: 'purchase_cost_paise', label: 'Unit purchase cost (₹)', type: 'money' },
           { name: 'serials', label: 'Serial numbers (one per line)', type: 'textarea', optional: true },

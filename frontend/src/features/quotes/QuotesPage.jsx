@@ -21,8 +21,8 @@ export function QuotesPage() {
       create={{
         label: 'Create quote',
         fields: [
-          { name: 'lead_id', label: 'Approved lead ID', type: 'number', min: 1 },
-          { name: 'package_id', label: 'Package ID', type: 'number', min: 1 },
+          { name: 'lead_id', label: 'Approved customer', lookup: 'approved_leads', empty: 'Approve a site survey before creating a quote.' },
+          { name: 'package_id', label: 'Package', lookup: 'packages' },
           { name: 'valid_until', label: 'Valid until', type: 'date' },
           { name: 'subsidy_paise', label: 'Subsidy (₹)', type: 'money', value: 0 },
         ],

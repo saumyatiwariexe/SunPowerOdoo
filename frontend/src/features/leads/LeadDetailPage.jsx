@@ -26,19 +26,11 @@ export default function LeadDetailPage() {
           {r.lost_reason && <p>Reason for loss: {r.lost_reason}</p>}
           {!['LOST', 'WON'].includes(r.status) && (
             <>
-              <details>
+              <details open={r.status === 'NEW'}>
                 <summary>Log customer call</summary>
                 <CallChecklistForm lead={r} onCallLogged={reload} />
               </details>
-              {r.status === 'CONTACTED' && (
-                <ActionForm
-                  primary
-                  submit="Request site survey"
-                  action={() => api.post(path + '/survey-request')}
-                  onDone={reload}
-                />
-              )}
-              {r.status === 'SURVEY_PENDING' && (
+              {['CONTACTED', 'SURVEY_PENDING'].includes(r.status) && (
                 <ScheduleSurveyButton leadId={r.id} />
               )}
               {r.status === 'SURVEY_DONE' && (

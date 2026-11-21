@@ -22,12 +22,13 @@ function ScheduleSurveyForm({ leadId, onDone }) {
         submit="Schedule survey"
         fields={[
           {
-            name: 'lead_id', label: 'Lead', value: leadId || '', placeholder: 'Choose a contacted lead',
-            options: leads.map((lead) => ({ value: lead.id, label: lead.name + ' · Lead #' + lead.id })),
+            name: 'lead_id', label: 'Lead', value: leadId || '', record: true,
+            options: leads.map((lead) => ({ value: lead.id, label: lead.name + ' · Lead #' + lead.id,
+              detail: `${lead.phone} · ${lead.requested_kw} kW` })),
           },
           {
-            name: 'surveyor_id', label: 'Surveyor', placeholder: 'Choose a surveyor',
-            options: surveyors.map((user) => ({ value: user.id, label: user.name + ' · #' + user.id })),
+            name: 'surveyor_id', label: 'Surveyor', record: true,
+            options: surveyors.map((user) => ({ value: user.id, label: user.name, detail: user.email })),
           },
           { name: 'scheduled_at', label: 'Visit time', type: 'datetime-local' },
         ]}

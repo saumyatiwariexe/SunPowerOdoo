@@ -81,6 +81,16 @@ The persistence regression uses a temporary SQLite file and two separate Python
 processes. From `frontend/`, run `node --test tests/dev-server.test.js` to check
 that the API target survives a fresh frontend session.
 
+Lead calls support clickable answers and optional exact measurements or notes.
+Saving a call exposes survey scheduling with the customer preselected. Quote,
+invoice, stock, survey, crew and ticket forms select database records by name
+and reference; no manual record IDs are needed. Staff assignment choices are
+restricted to active eligible staff and omit passwords and pay information.
+
+With Playwright available, set `QA_UI_URL` and `QA_SEED_PASSWORD` for a disposable
+seeded database and run `node scripts/smoke_quick_forms.cjs`. It writes test records
+and checks these form submissions at mobile width, plus choice loading and retry.
+
 ## Demo logins (created by the seed)
 | Role | Email |
 |---|---|

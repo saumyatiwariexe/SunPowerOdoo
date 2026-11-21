@@ -60,6 +60,14 @@ def list_staff(db: Session, paging: Pagination) -> tuple[list[User], int]:
     return list(db.scalars(query)), total
 
 
+def assignment_options(db: Session, paging: Pagination) -> tuple[list[dict], int]:
+    filters = (User.active.is_(True), User.role.in_((Role.CREW, Role.SUPPORT)))
+    total = db.scalar(select(func.count()).select_from(User).where(*filters)) or 0
+    query = select(User.id, User.name, User.email, User.role).where(*filters).order_by(User.name, User.id)
+    rows = db.execute(query.offset(paging.offset).limit(paging.page_size)).mappings()
+    return [dict(row) for row in rows], total
+
+
 def get_staff(db: Session, user_id: int, *, for_update: bool = False) -> User:
     user = db.get(User, user_id, with_for_update=for_update, populate_existing=for_update)
     if user is None:

@@ -60,17 +60,13 @@ export function InstallDetail() {
               primary
               submit="Save schedule"
               fields={[
-                { name: 'crew_lead_id', label: 'Crew lead ID', type: 'number', min: 1 },
-                { name: 'members', label: 'Other crew IDs (comma-separated)', optional: true },
+                { name: 'crew_lead_id', label: 'Crew lead', lookup: 'crew' },
+                { name: 'crew_ids', label: 'Crew members', lookup: 'crew', multiple: true, optional: true },
                 { name: 'scheduled_start', label: 'Start', type: 'datetime-local' },
                 { name: 'scheduled_end', label: 'End', type: 'datetime-local' },
               ]}
-              action={({ members, ...v }) =>
-                api.patch(path + '/schedule', {
-                  ...v,
-                  crew_ids: members ? members.split(',').map((x) => Number(x.trim())) : [],
-                })
-              }
+              initial={{ crew_lead_id: r.crew_lead_id, crew_ids: r.crew.map((c) => c.user_id) }}
+              action={(v) => api.patch(path + '/schedule', v)}
               onDone={reload}
             />
           )}

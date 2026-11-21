@@ -1,8 +1,7 @@
 import React, { useState } from 'react'
 import { api } from '../../app/api.js'
-import Field, { inputCls, selectCls, textareaCls } from '../../app/components/Field.jsx'
+import Field from '../../app/components/Field.jsx'
 import { paise } from '../../app/ActionForm'
-import Spinner from '../../app/components/Spinner.jsx'
 
 export default function CallChecklistForm({ lead, onCallLogged }) {
   const [form, setForm] = useState({
@@ -12,6 +11,7 @@ export default function CallChecklistForm({ lead, onCallLogged }) {
     outcome: '',
     notes: '',
   })
+  const [customOutcome, setCustomOutcome] = useState('')
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [serverErr, setServerErr] = useState('')
@@ -20,7 +20,9 @@ export default function CallChecklistForm({ lead, onCallLogged }) {
 
   const validate = () => {
     const e = {}
-    if (!form.outcome.trim()) e.outcome = 'Outcome is required'
+    if (!form.outcome || (form.outcome === 'Other' && !customOutcome.trim())) e.outcome = 'Choose an outcome or describe the call.'
+    if (form.shadow_free_area_sqm && Number(form.shadow_free_area_sqm) <= 0) e.shadow_free_area_sqm = 'Enter a positive roof area.'
+    if (form.monthly_bill_paise && !/^\d+(\.\d{1,2})?$/.test(form.monthly_bill_paise)) e.monthly_bill_paise = 'Enter an amount with up to two decimal places.'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -33,7 +35,7 @@ export default function CallChecklistForm({ lead, onCallLogged }) {
     try {
       const payload = {
         called_at: new Date().toISOString(),
-        outcome: form.outcome.trim(),
+        outcome: form.outcome === 'Other' ? customOutcome.trim() : form.outcome,
         notes: form.notes.trim() || null,
         shadow_free_area_sqm: form.shadow_free_area_sqm ? parseFloat(form.shadow_free_area_sqm) : null,
         monthly_bill_paise: form.monthly_bill_paise ? paise(form.monthly_bill_paise) : null,
@@ -41,6 +43,7 @@ export default function CallChecklistForm({ lead, onCallLogged }) {
       }
       const { data } = await api.post(`/leads/${lead.id}/calls`, payload)
       onCallLogged(data)
+      setCustomOutcome('')
       setForm({
         shadow_free_area_sqm: '',
         monthly_bill_paise: '',
@@ -52,7 +55,7 @@ export default function CallChecklistForm({ lead, onCallLogged }) {
       if (err.details?.length) {
         const fe = {}
         err.details.forEach((d) => {
-          if (d.field) fe[d.field] = d.message
+          fe[d.field || d.loc?.at(-1)] = d.message || d.msg
         })
         setErrors(fe)
       }
@@ -63,89 +66,61 @@ export default function CallChecklistForm({ lead, onCallLogged }) {
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-      <h3 className="text-sm font-semibold text-slate-800 mb-4">Log Call / Site Assessment</h3>
-
-      {serverErr && (
-        <div className="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
-          {serverErr}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Shadow-free Area (m²)" error={errors.shadow_free_area_sqm}>
-            <input
-              type="number"
-              className={inputCls}
-              value={form.shadow_free_area_sqm}
-              onChange={(e) => set('shadow_free_area_sqm', e.target.value)}
-              placeholder="e.g. 25"
-              min="0"
-              step="0.5"
-              disabled={loading}
-            />
-          </Field>
-
-          <Field label="Monthly Bill (₹)" error={errors.monthly_bill_paise}>
-            <input
-              type="number"
-              className={inputCls}
-              value={form.monthly_bill_paise}
-              onChange={(e) => set('monthly_bill_paise', e.target.value)}
-              placeholder="e.g. 3500"
-              min="0"
-              disabled={loading}
-            />
+    <form onSubmit={handleSubmit} noValidate className="call-checklist">
+      <div>
+        <h3>Quick call check-in</h3>
+        <p>Tap the answers from your conversation. Add measurements only when known.</p>
+      </div>
+      {serverErr && <p role="alert" className="form-error">{serverErr}</p>}
+      <QuickChoices label="How did the call go?" value={form.outcome} disabled={loading}
+        onChange={(value) => { set('outcome', value); setErrors({}) }}
+        choices={['Ready for a survey', 'Follow up later', 'No answer', 'Not interested', 'Other']} />
+      {form.outcome === 'Other' && <Field label="Call outcome" required error={errors.outcome}>
+        <input value={customOutcome} onChange={(e) => setCustomOutcome(e.target.value)} disabled={loading} placeholder="What did the customer say?" />
+      </Field>}
+      {errors.outcome && form.outcome !== 'Other' && <p role="alert" className="form-error">{errors.outcome}</p>}
+      <QuickChoices label="Is the grid suitable?" value={form.grid_suitable} disabled={loading}
+        onChange={(value) => set('grid_suitable', value)}
+        choices={[{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }, { value: '', label: 'Not assessed' }]} />
+      <div className="call-measurements">
+        <div>
+          <QuickChoices label="Shadow-free roof area (m²)" value={form.shadow_free_area_sqm} disabled={loading}
+            onChange={(value) => set('shadow_free_area_sqm', value)} choices={['20', '40', '60']} />
+          <Field label="Exact roof area (optional)" error={errors.shadow_free_area_sqm}>
+            <input type="number" min="0.1" step="any" value={form.shadow_free_area_sqm}
+              onChange={(e) => set('shadow_free_area_sqm', e.target.value)} disabled={loading} placeholder="Not measured" />
           </Field>
         </div>
-
-        <Field label="Grid Suitable?" error={errors.grid_suitable}>
-          <select
-            className={selectCls}
-            value={form.grid_suitable}
-            onChange={(e) => set('grid_suitable', e.target.value)}
-            disabled={loading}
-          >
-            <option value="">— not assessed —</option>
-            <option value="true">Yes</option>
-            <option value="false">No</option>
-          </select>
-        </Field>
-
-        <Field label="Call Outcome" error={errors.outcome} required>
-          <input
-            type="text"
-            className={inputCls}
-            value={form.outcome}
-            onChange={(e) => set('outcome', e.target.value)}
-            placeholder="e.g. Interested, will confirm in 2 days"
-            disabled={loading}
-          />
-        </Field>
-
-        <Field label="Notes" error={errors.notes}>
-          <textarea
-            className={textareaCls}
-            rows={2}
-            value={form.notes}
-            onChange={(e) => set('notes', e.target.value)}
-            placeholder="Additional notes from the call…"
-            disabled={loading}
-          />
-        </Field>
-
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-60 transition-colors"
-          >
-            {loading && <Spinner size="sm" />}
-            {loading ? 'Saving…' : 'Log Call'}
-          </button>
+        <div>
+          <QuickChoices label="Monthly electricity bill (₹)" value={form.monthly_bill_paise} disabled={loading}
+            onChange={(value) => set('monthly_bill_paise', value)} choices={['1500', '3000', '5000']} />
+          <Field label="Exact monthly bill (optional)" error={errors.monthly_bill_paise}>
+            <input type="number" min="0" step="0.01" value={form.monthly_bill_paise}
+              onChange={(e) => set('monthly_bill_paise', e.target.value)} disabled={loading} placeholder="Not known" />
+          </Field>
         </div>
-      </form>
-    </div>
+      </div>
+      <details>
+        <summary>Add a note (optional)</summary>
+        <Field label="Call notes"><textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} disabled={loading} rows={2} /></Field>
+      </details>
+      <div className="call-save">
+        {lead.status === 'NEW' && <small>Saving this call marks the lead as contacted. You can then schedule a survey.</small>}
+        <button type="submit" className="button primary" disabled={loading}>{loading ? 'Saving…' : 'Log Call'}</button>
+      </div>
+    </form>
   )
+}
+
+function QuickChoices({ label, choices, value, onChange, disabled }) {
+  return <fieldset className="quick-question" disabled={disabled}>
+    <legend>{label}</legend>
+    <div className="quick-choices">
+      {choices.map((choice) => {
+        const item = typeof choice === 'string' ? { value: choice, label: choice } : choice
+        return <button key={item.value} type="button" aria-pressed={value === item.value}
+          onClick={() => onChange(item.value)}>{item.label}</button>
+      })}
+    </div>
+  </fieldset>
 }

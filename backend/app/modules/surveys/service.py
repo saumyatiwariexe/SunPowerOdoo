@@ -55,7 +55,7 @@ READY_STATUSES = (LeadStatus.CONTACTED, LeadStatus.SURVEY_PENDING)
 def scheduling_options(db: Session, lead_id: int | None = None) -> dict:
     active_visit = select(Survey.id).where(Survey.lead_id == Lead.id, Survey.status != SurveyStatus.REJECTED)
     eligible = (
-        select(Lead.id, Customer.name).join(Customer, Customer.id == Lead.customer_id)
+        select(Lead.id, Customer.name, Customer.phone, Lead.requested_kw, Lead.status).join(Customer, Customer.id == Lead.customer_id)
         .where(Lead.status.in_(READY_STATUSES), ~active_visit.exists())
         .order_by(Customer.name, Lead.id)
     )
@@ -65,7 +65,7 @@ def scheduling_options(db: Session, lead_id: int | None = None) -> dict:
         existing_id = db.scalar(select(Survey.id).where(
             Survey.lead_id == lead_id, Survey.status != SurveyStatus.REJECTED
         ))
-    surveyors = select(User.id, User.name).where(User.active.is_(True), User.role == Role.SURVEYOR)
+    surveyors = select(User.id, User.name, User.email).where(User.active.is_(True), User.role == Role.SURVEYOR)
     return {
         "leads": [dict(row) for row in db.execute(eligible).mappings()],
         "surveyors": [dict(row) for row in db.execute(surveyors.order_by(User.name, User.id)).mappings()],

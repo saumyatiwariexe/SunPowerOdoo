@@ -11,7 +11,7 @@ from app.core.security import SESSION_COOKIE, SESSION_COOKIE_PATH, create_sessio
 
 from .models import User
 from .schemas import LoginRequest, StaffCreate, StaffPage, StaffPatch, StaffRead, UserRead
-from .service import authenticate, create_staff, get_staff, list_staff, update_staff
+from .service import assignment_options, authenticate, create_staff, get_staff, list_staff, update_staff
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -56,6 +56,14 @@ def logout(
 @router.get("/me")
 def me(user: Annotated[User, Depends(get_current_user)]) -> dict[str, UserRead]:
     return {"data": UserRead.model_validate(user)}
+
+
+@router.get("/assignment-options", dependencies=[Depends(require_roles("DIRECTOR", "SUPPORT"))])
+def assignable_staff(
+    db: Annotated[Session, Depends(get_db)], paging: Annotated[Pagination, Depends()],
+) -> dict:
+    rows, total = assignment_options(db, paging)
+    return {"data": rows, "meta": paging.meta(total)}
 
 
 director = Depends(require_roles("DIRECTOR"))

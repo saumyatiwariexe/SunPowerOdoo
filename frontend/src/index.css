@@ -2,6 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+.call-checklist { display: grid; gap: 1.4rem; padding-top: 1.25rem; }
+.call-checklist h3 { font-size: 1.1rem; margin-bottom: .35rem; }
+.call-checklist p, .call-save small { color: var(--muted); }
+.quick-question { border: 0; padding: 0; margin: 0; min-width: 0; }
+.quick-question legend { font-weight: 600; font-size: .9rem; margin-bottom: .65rem; }
+.quick-choices { display: flex; flex-wrap: wrap; gap: .5rem; }
+.quick-choices button { min-height: 44px; padding: .6rem .9rem; border: 1px solid var(--line); border-radius: 6px; background: var(--white); color: var(--ink); font-weight: 500; }
+.quick-choices button:hover { border-color: var(--pine); }
+.quick-choices button[aria-pressed="true"] { background: var(--pine); border-color: var(--pine); color: #fff; }
+.call-measurements { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
+.call-measurements > div { display: grid; gap: .75rem; align-content: start; }
+.call-save { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.call-save small { max-width: 55ch; }
+.record-picker { display: grid; gap: .5rem; min-width: 0; }
+.record-picker select, .record-picker input { min-width: 0; width: 100%; }
+.record-selected { overflow-wrap: anywhere; color: var(--muted); line-height: 1.5; }
+.record-checks { display: grid; gap: .4rem; max-height: 240px; overflow: auto; }
+.record-check { display: flex !important; align-items: center; gap: .75rem; min-height: 48px; padding: .5rem; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
+.record-check input { width: 18px; height: 18px; flex-shrink: 0; }
+.record-check small { display: block; color: var(--muted); overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .call-measurements { grid-template-columns: 1fr; }
+  .call-save { align-items: stretch; flex-direction: column; }
+}
+
 @font-face {
   font-family: 'Instrument Sans';
   src: url('/fonts/instrument-sans.woff2') format('woff2');

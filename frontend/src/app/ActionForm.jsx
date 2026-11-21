@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import { human } from './navigation'
 import Field from './components/Field'
+import RecordSelect from './RecordSelect'
 
 export function paise(text) {
   if (!/^\d+(\.\d{1,2})?$/.test(text))
@@ -21,9 +22,12 @@ export default function ActionForm({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [errors, setErrors] = useState({})
+  const [available, setAvailable] = useState({})
+  const onAvailability = useCallback((name, ready) => setAvailable((prev) => ({ ...prev, [name]: ready })), [])
+  const loadingChoices = fields.some((f) => f.lookup && !available[f.name])
   async function save(event) {
     event.preventDefault()
-    if (busy) return
+    if (busy || loadingChoices) return
     setBusy(true)
     setError('')
     setErrors({})
@@ -32,10 +36,11 @@ export default function ActionForm({
       const raw = new FormData(form)
       const values = {}
       for (const f of fields) {
+        if (f.multiple) { values[f.name] = raw.getAll(f.name).map(Number); continue }
         const text = raw.get(f.name)
         if (text == null || text === '' || (f.type === 'file' && !text.size)) continue
         if (f.type === 'money') values[f.name] = paise(text)
-        else if (f.type === 'number') values[f.name] = Number(text)
+        else if (f.type === 'number' || f.lookup || f.record) values[f.name] = Number(text)
         else if (f.type === 'datetime-local') values[f.name] = new Date(text).toISOString()
         else values[f.name] = typeof text === 'string' && f.type !== 'password' ? text.trim() : text
       }
@@ -66,7 +71,9 @@ export default function ActionForm({
         }
         return (
           <Field key={f.name} label={f.label} error={errors[f.name]}>
-            {f.options ? (
+            {f.lookup || f.record ? (
+              <RecordSelect field={f} initial={initial[f.name] ?? f.value} busy={busy} onAvailability={onAvailability} />
+            ) : f.options ? (
               <select {...props}>
                 {f.placeholder && <option value="" disabled>{f.placeholder}</option>}
                 {f.optional && <option value="">Unassigned</option>}
@@ -96,7 +103,7 @@ export default function ActionForm({
           {error}
         </p>
       )}
-      <button className={primary ? 'button primary' : 'button'} disabled={busy}>
+      <button className={primary ? 'button primary' : 'button'} disabled={busy || loadingChoices}>
         {busy ? 'Saving…' : submit}
       </button>
     </form>
