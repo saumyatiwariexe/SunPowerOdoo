@@ -1,24 +1,26 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.core.errors import AppError
+from app.core.pagination import Pagination
 from app.modules.catalog.models import Product
 from app.modules.catalog.service import adjust_stock
 from app.modules.inventory.models import SerialUnit, StockMovement
 from app.modules.inventory.schemas import StockReceiveIn
 
 
-def list_stock(db: Session, q: str | None = None, low_stock_only: bool = False) -> list[dict]:
-    stmt = select(Product).order_by(Product.name.asc())
+def list_stock(db: Session, paging: Pagination, q: str | None = None, low_stock_only: bool = False) -> tuple[list[dict], int]:
+    stmt = select(Product)
     if q:
         stmt = stmt.where(Product.name.ilike(f"%{q}%") | Product.sku.ilike(f"%{q}%"))
-    products = db.scalars(stmt).all()
+    if low_stock_only:
+        stmt = stmt.where(Product.on_hand <= Product.reorder_level)
+    total = db.scalar(select(func.count()).select_from(stmt.subquery()))
+    products = db.scalars(stmt.order_by(Product.name, Product.id).offset(paging.offset).limit(paging.page_size))
 
     result = []
     for p in products:
         is_low = p.on_hand <= p.reorder_level
-        if low_stock_only and not is_low:
-            continue
         result.append({
             "id": p.id,
             "sku": p.sku,
@@ -32,7 +34,7 @@ def list_stock(db: Session, q: str | None = None, low_stock_only: bool = False) 
             "cost_paise": p.cost_paise,
             "price_paise": p.price_paise,
         })
-    return result
+    return result, total
 
 
 def receive_stock(db: Session, payload: StockReceiveIn) -> dict:

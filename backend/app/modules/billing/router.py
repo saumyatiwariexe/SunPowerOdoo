@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.core.db import get_db
+from app.core.pagination import Pagination
 from app.core.deps import require_roles
 from app.modules.billing import service
 from app.modules.billing.schemas import InvoiceCreateIn, PaymentCreateIn
@@ -49,11 +50,12 @@ def post_invoice_payment(
 @router.get("/invoices")
 def get_invoices(
     status: str | None = Query(default=None),
+    paging: Pagination = Depends(),
     db: Session = Depends(get_db),
     _user=Depends(require_roles("DIRECTOR", "SALES", "SUPPORT")),
 ):
-    items = service.list_invoices(db, status=status)
-    return {"data": items, "meta": {"total": len(items)}}
+    items, total = service.list_invoices(db, paging, status=status)
+    return {"data": items, "meta": paging.meta(total)}
 
 
 @router.post("/invoices")

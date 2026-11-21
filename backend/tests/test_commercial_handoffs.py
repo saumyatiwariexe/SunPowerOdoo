@@ -593,3 +593,17 @@ def test_public_enquiry_rejects_bad_contact_details(workspace, field):
     result = workspace.client.post(f"{API}/public/enquiries", json=payload)
     assert result.status_code == 422
     assert result.json()["error"]["details"][0]["loc"] == ["body", field]
+
+
+def test_stock_and_invoice_pagination_keep_filtered_totals(workspace):
+    for number in ("QT-PAGE-A", "QT-PAGE-B"):
+        order = add_order(workspace, number)
+        assert workspace.client.post(f"{API}/invoices", json={"order_id": order}).is_success
+    for path, filters in (("invoices", {"status": "SENT"}), ("stock", {"low_stock": True})):
+        first, second = [workspace.client.get(f"{API}/{path}", params={
+            **filters, "page": page, "page_size": 1
+        }).json() for page in (1, 2)]
+        assert first["meta"]["total"] == second["meta"]["total"] >= 2
+        assert len(first["data"]) == len(second["data"]) == 1
+        assert first["data"][0]["id"] != second["data"][0]["id"]
+        assert second["meta"]["page"] == 2

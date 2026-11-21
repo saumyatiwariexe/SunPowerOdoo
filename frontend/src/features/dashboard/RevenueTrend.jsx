@@ -1,5 +1,5 @@
 import React from 'react'
-import { formatPaise } from '../../app/api'
+import { api, formatPaise } from '../../app/api'
 import { State, useRecord } from '../../app/records'
 
 function buckets(range, invoices) {
@@ -27,8 +27,17 @@ function buckets(range, invoices) {
   }
   return [...groups.values()]
 }
+async function loadInvoices(path) {
+  const rows = []
+  for (let page = 1; ; page += 1) {
+    const { data, meta } = await api.get(path, { page, page_size: 100 })
+    rows.push(...data)
+    if (!data.length || rows.length >= meta.total) return { data: rows }
+  }
+}
+
 export default function RevenueTrend({ range }) {
-  const invoices = useRecord('/invoices')
+  const invoices = useRecord('/invoices', loadInvoices)
   const series = buckets(range, invoices.data || [])
   const max = Math.max(0, ...series.map((b) => b.amount))
   return (

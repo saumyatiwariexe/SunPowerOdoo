@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from app.core.errors import AppError
+from app.core.pagination import Pagination
 from app.core.numbering import next_number
 from app.modules.billing.models import Invoice, InvoiceLine, Payment
 from app.modules.orders.models import Order
@@ -198,29 +199,30 @@ def create_ticket_invoice(db: Session, ticket_id: int) -> Invoice | None:
     return invoice
 
 
-def list_invoices(db: Session, status: str | None = None) -> list[dict]:
-    stmt = select(Invoice).order_by(Invoice.created_at.desc())
+def list_invoices(db: Session, paging: Pagination, status: str | None = None) -> tuple[list[dict], int]:
+    stmt = select(Invoice, Customer.name).join(Customer, Customer.id == Invoice.customer_id)
     if status:
         stmt = stmt.where(Invoice.status == status)
-    invoices = db.scalars(stmt).all()
+    total = db.scalar(select(func.count()).select_from(stmt.subquery()))
+    invoices = db.execute(stmt.order_by(Invoice.created_at.desc(), Invoice.id.desc())
+                          .offset(paging.offset).limit(paging.page_size))
 
     out = []
-    for inv in invoices:
-        cust = db.scalar(select(Customer).where(Customer.id == inv.customer_id))
+    for inv, customer_name in invoices:
         out.append({
             "id": inv.id,
             "number": inv.number,
             "order_id": inv.order_id,
             "ticket_id": inv.ticket_id,
             "customer_id": inv.customer_id,
-            "customer_name": cust.name if cust else "",
+            "customer_name": customer_name,
             "status": inv.status,
             "total_paise": inv.total_paise,
             "paid_paise": inv.paid_paise,
             "balance_paise": max(0, inv.total_paise - inv.paid_paise),
             "issued_at": inv.issued_at,
         })
-    return out
+    return out, total
 
 
 def get_invoice_detail(db: Session, invoice_id: int) -> dict:

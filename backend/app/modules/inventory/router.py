@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.core.db import get_db
+from app.core.pagination import Pagination
 from app.core.deps import require_roles
 from app.modules.inventory import service
 from app.modules.inventory.schemas import StockReceiveIn
@@ -12,11 +13,12 @@ router = APIRouter(tags=["inventory"])
 def get_products_stock(
     q: str | None = Query(default=None),
     low_stock: bool = Query(default=False),
+    paging: Pagination = Depends(),
     db: Session = Depends(get_db),
     _user=Depends(require_roles("WAREHOUSE", "DIRECTOR", "SALES", "SUPPORT")),
 ):
-    items = service.list_stock(db, q=q, low_stock_only=low_stock)
-    return {"data": items, "meta": {"total": len(items)}}
+    items, total = service.list_stock(db, paging, q=q, low_stock_only=low_stock)
+    return {"data": items, "meta": paging.meta(total)}
 
 
 @router.post("/stock/receive")
