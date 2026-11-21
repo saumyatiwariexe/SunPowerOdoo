@@ -17,6 +17,10 @@ from sqlalchemy.orm import Session
 import app.models_registry  # noqa: F401 — registers all ORM models with Base
 from app.core.db import Base, get_engine
 from app.core.numbering import seed_counters
+from seed.seed_b import seed_historical_delivery
+from seed.seed_catalog import seed_catalog
+from seed.seed_inventory import seed_inventory
+from seed.seed_surveys import seed_surveys
 from seed.seed_users import seed_users
 from seed.seed_leads import seed_leads
 from seed.seed_subsidy import backfill_subsidy_claims
@@ -29,50 +33,16 @@ def run_all() -> None:
     Base.metadata.create_all(engine)
     print("Tables created (or verified).")
 
-    with Session(engine) as db:
-        # 1. Seed number counters (QT, ORD, INV, TKT)
+    with Session(engine) as db, db.begin():
         seed_counters(db)
-        db.commit()
-        print("Counters seeded.")
-
-        # 2. Seed demo users (one per role, password: sunpower123)
         seed_users(db, password="sunpower123")
-        db.commit()
-        print("Demo users seeded.")
-
-        # 3. Seed leads + customers
         seed_leads(db)
-        db.commit()
-        print("Leads seeded.")
-
-        # 4. Other module seeds — imported lazily so missing modules don't block startup
-        _try_seed(db, "seed.seed_catalog", "seed_catalog")
-        _try_seed(db, "seed.seed_inventory", "seed_inventory")
-        _try_seed(db, "seed.seed_orders", "seed_orders")
-        _try_seed(db, "seed.seed_deliveries", "seed_deliveries")
-        _try_seed(db, "seed.seed_surveys", "seed_surveys")
-        _try_seed(db, "seed.seed_installs", "seed_installs")
-        _try_seed(db, "seed.seed_tickets", "seed_tickets")
+        seed_catalog(db)
+        seed_inventory(db)
+        seed_historical_delivery(db)
+        seed_surveys(db)
         backfill_subsidy_claims(db)
-        db.commit()
-
     print("Seed complete.")
-
-
-def _try_seed(db: Session, module_path: str, fn_name: str) -> None:
-    try:
-        import importlib
-
-        mod = importlib.import_module(module_path)
-        fn = getattr(mod, fn_name)
-        fn(db)
-        db.commit()
-        print(f"{module_path}.{fn_name} → OK")
-    except ModuleNotFoundError:
-        print(f"{module_path} not found — skipping.")
-    except Exception as exc:
-        db.rollback()
-        print(f"{module_path}.{fn_name} failed: {exc}")
 
 
 if __name__ == "__main__":

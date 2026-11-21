@@ -566,3 +566,19 @@ def test_scheduling_options_follow_contact_and_exclude_booked_visits(workspace):
     assert data["leads"] == [] and data["existing_survey_id"] == booked["id"]
     stage.state.actor = stage.actors["surveyor"]
     assert stage.client.get(opts).status_code == 403
+
+
+def test_master_seed_provisions_historical_warranties_once(workspace, monkeypatch):
+    from app.modules.warranty.service import check_by_serial
+    from seed import seed_all
+
+    monkeypatch.setattr(seed_all, "get_engine", lambda: workspace.engine)
+    seed_all.run_all()
+    with Session(workspace.engine) as db:
+        serial = check_by_serial(db, "INV-OLD-2024-001")
+        assert serial["in_warranty"] is False
+        assert check_by_serial(db, "PNL-OLD-2024-001")["in_warranty"] is True
+    seed_all.run_all()
+    with Session(workspace.engine) as db:
+        assert check_by_serial(db, "INV-OLD-2024-001")["warranty_id"] == serial["warranty_id"]
+        assert db.scalar(select(func.count()).select_from(Invoice)) == 1

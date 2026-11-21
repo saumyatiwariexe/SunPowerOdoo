@@ -1,10 +1,12 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.modules.billing.models import Invoice, InvoiceLine, Payment
-from app.modules.catalog.models import Product
+from app.modules.catalog.models import Package, Product
+from app.modules.leads.models import Lead, LeadSource, LeadStatus, SystemType
+from app.modules.quotes.models import Quote, QuoteLine, QuoteStatus
 from app.modules.deliveries.models import Delivery, DeliveryLine, DeliveryScan
 from app.modules.inventory.models import SerialUnit, StockMovement
 from app.modules.orders.models import Order
@@ -18,22 +20,10 @@ def seed_person_b(db: Session) -> None:
         return
 
     products = db.scalars(select(Product)).all()
-    warehouse_user = db.scalar(select(User).where(User.role == "WAREHOUSE"))
-    director_user = db.scalar(select(User).where(User.role == "DIRECTOR"))
-    actor_id = warehouse_user.id if warehouse_user else (director_user.id if director_user else 1)
-
-    panel_prod = None
-    inverter_prod = None
-
     # 1. Seed opening stock & serial units for all catalog products
     for prod in products:
         if prod.category == "SERVICE":
             continue
-        if prod.category == "PANEL" and not panel_prod:
-            panel_prod = prod
-        if prod.category == "INVERTER" and not inverter_prod:
-            inverter_prod = prod
-
         qty = 25 if prod.tracks_serial else 100
         prod.on_hand = qty
         db.add(
@@ -58,130 +48,155 @@ def seed_person_b(db: Session) -> None:
 
     db.flush()
 
-    # 2. Seed an old delivered order (26 months ago) so inverter warranty is EXPIRED (24m)
-    #    while panel warranty is still ACTIVE (240m) for Demo Scene 7 & 8.
-    old_order = db.scalar(
-        select(Order).where(Order.number == "ORD-DEMO-HISTORY", Order.status == "CLOSED")
-    )
+
+def seed_historical_delivery(db: Session) -> None:
+    """Provision the archived panel and inverter used by the two support scenes."""
+    old_order = db.scalar(select(Order).where(Order.number == "ORD-DEMO-HISTORY"))
     if old_order and db.scalar(select(Delivery.id).where(Delivery.order_id == old_order.id)):
         return
 
-    if old_order and inverter_prod and panel_prod:
-        delivered_dt = datetime.now(timezone.utc) - relativedelta(months=26)
-        delivered_date = delivered_dt.date()
-
-        old_delivery = Delivery(
-            order_id=old_order.id,
-            status="DELIVERED",
-            vehicle="PB-08-SOLAR-01",
-            dispatched_at=delivered_dt - timedelta(hours=3),
-            delivered_at=delivered_dt,
-            delivered_by_id=actor_id,
-        )
-        db.add(old_delivery)
+    delivered_dt = datetime.now(timezone.utc) - relativedelta(months=26)
+    delivered_date = delivered_dt.date()
+    panel_prod = db.scalars(select(Product).where(Product.sku == "PANEL-500")).one()
+    inverter_prod = db.scalars(select(Product).where(Product.sku == "INV-1")).one()
+    actor_id = db.scalars(select(User.id).where(User.email == "warehouse@sunpower.test")).one()
+    if old_order is None:
+        customer = Customer(name="Demo warranty customer", phone="9000000026",
+                            address="Demo rooftop installation", pincode="560001")
+        db.add(customer)
+        db.flush()
+        lead = Lead(customer_id=customer.id, source=LeadSource.CALL, status=LeadStatus.WON,
+                    system_type=SystemType.ON_GRID, requested_kw=1, created_at=delivered_dt)
+        db.add(lead)
+        db.flush()
+        total = inverter_prod.price_paise + panel_prod.price_paise
+        package_id = db.scalars(select(Package.id).where(Package.name == "On-Grid 1 kW")).one()
+        quote = Quote(number="QT-DEMO-HISTORY", lead_id=lead.id, customer_id=customer.id,
+                      package_id=package_id, status=QuoteStatus.ACCEPTED, subtotal_paise=total,
+                      total_paise=total, valid_until=delivered_date, created_at=delivered_dt)
+        for product in (panel_prod, inverter_prod):
+            quote.lines.append(QuoteLine(product_id=product.id, description=product.name, qty=1,
+                                         unit_price_paise=product.price_paise, line_paise=product.price_paise))
+        db.add(quote)
+        db.flush()
+        old_order = Order(number="ORD-DEMO-HISTORY", quote_id=quote.id, customer_id=customer.id,
+                          status="CLOSED", total_paise=total, advance_min_paise=0,
+                          confirmed_at=delivered_dt - timedelta(days=1), created_at=delivered_dt - timedelta(days=1))
+        db.add(old_order)
         db.flush()
 
-        # Assign 1 old inverter serial (EXPIRED warranty: 24 months)
-        old_inv_sn = SerialUnit(
-            product_id=inverter_prod.id,
-            serial_no="INV-OLD-2024-001",
-            status="INSTALLED",
-            purchase_cost_paise=inverter_prod.cost_paise,
+    old_delivery = Delivery(
+        order_id=old_order.id,
+        status="DELIVERED",
+        vehicle="PB-08-SOLAR-01",
+        dispatched_at=delivered_dt - timedelta(hours=3),
+        delivered_at=delivered_dt,
+        delivered_by_id=actor_id,
+    )
+    db.add(old_delivery)
+    db.flush()
+
+    # Assign 1 old inverter serial (EXPIRED warranty: 24 months)
+    old_inv_sn = SerialUnit(
+        product_id=inverter_prod.id,
+        serial_no="INV-OLD-2024-001",
+        status="INSTALLED",
+        purchase_cost_paise=inverter_prod.cost_paise,
+        delivery_id=old_delivery.id,
+        customer_id=old_order.customer_id,
+        installed_at=delivered_dt,
+    )
+    db.add(old_inv_sn)
+    db.flush()
+
+    db.add(DeliveryLine(delivery_id=old_delivery.id, product_id=inverter_prod.id, qty_required=1, qty_packed=1))
+    db.add(
+        DeliveryScan(
             delivery_id=old_delivery.id,
+            serial_unit_id=old_inv_sn.id,
+            scanned_by_id=actor_id,
+            scanned_at=delivered_dt - timedelta(hours=4),
+        )
+    )
+
+    inv_end_date = delivered_date + relativedelta(months=inverter_prod.warranty_months or 24)
+    db.add(
+        Warranty(
+            serial_unit_id=old_inv_sn.id,
             customer_id=old_order.customer_id,
-            installed_at=delivered_dt,
-        )
-        db.add(old_inv_sn)
-        db.flush()
-
-        db.add(DeliveryLine(delivery_id=old_delivery.id, product_id=inverter_prod.id, qty_required=1, qty_packed=1))
-        db.add(
-            DeliveryScan(
-                delivery_id=old_delivery.id,
-                serial_unit_id=old_inv_sn.id,
-                scanned_by_id=actor_id,
-                scanned_at=delivered_dt - timedelta(hours=4),
-            )
-        )
-
-        inv_end_date = delivered_date + relativedelta(months=inverter_prod.warranty_months or 24)
-        db.add(
-            Warranty(
-                serial_unit_id=old_inv_sn.id,
-                customer_id=old_order.customer_id,
-                order_id=old_order.id,
-                start_date=delivered_date,
-                end_date=inv_end_date,
-                status="EXPIRED" if date.today() > inv_end_date else "ACTIVE",
-            )
-        )
-
-        # Assign 1 old panel serial (ACTIVE warranty: 240 months)
-        old_pnl_sn = SerialUnit(
-            product_id=panel_prod.id,
-            serial_no="PNL-OLD-2024-001",
-            status="INSTALLED",
-            purchase_cost_paise=panel_prod.cost_paise,
-            delivery_id=old_delivery.id,
-            customer_id=old_order.customer_id,
-            installed_at=delivered_dt,
-        )
-        db.add(old_pnl_sn)
-        db.flush()
-
-        db.add(DeliveryLine(delivery_id=old_delivery.id, product_id=panel_prod.id, qty_required=1, qty_packed=1))
-        db.add(
-            DeliveryScan(
-                delivery_id=old_delivery.id,
-                serial_unit_id=old_pnl_sn.id,
-                scanned_by_id=actor_id,
-                scanned_at=delivered_dt - timedelta(hours=4),
-            )
-        )
-
-        pnl_end_date = delivered_date + relativedelta(months=panel_prod.warranty_months or 240)
-        db.add(
-            Warranty(
-                serial_unit_id=old_pnl_sn.id,
-                customer_id=old_order.customer_id,
-                order_id=old_order.id,
-                start_date=delivered_date,
-                end_date=pnl_end_date,
-                status="ACTIVE" if date.today() <= pnl_end_date else "EXPIRED",
-            )
-        )
-
-        # Paid invoice for the old order
-        old_inv = Invoice(
-            number="INV-0000",
             order_id=old_order.id,
-            customer_id=old_order.customer_id,
-            status="PAID",
-            total_paise=old_order.total_paise,
-            paid_paise=old_order.total_paise,
-            issued_at=delivered_dt,
+            start_date=delivered_date,
+            end_date=inv_end_date,
+            status="EXPIRED" if datetime.now(timezone.utc).date() > inv_end_date else "ACTIVE",
         )
-        db.add(old_inv)
-        db.flush()
+    )
 
-        db.add(
-            InvoiceLine(
-                invoice_id=old_inv.id,
-                description=f"Rooftop Solar Installation ({old_order.number})",
-                qty=1,
-                unit_price_paise=old_order.total_paise,
-            )
+    # Assign 1 old panel serial (ACTIVE warranty: 240 months)
+    old_pnl_sn = SerialUnit(
+        product_id=panel_prod.id,
+        serial_no="PNL-OLD-2024-001",
+        status="INSTALLED",
+        purchase_cost_paise=panel_prod.cost_paise,
+        delivery_id=old_delivery.id,
+        customer_id=old_order.customer_id,
+        installed_at=delivered_dt,
+    )
+    db.add(old_pnl_sn)
+    db.flush()
+
+    db.add(DeliveryLine(delivery_id=old_delivery.id, product_id=panel_prod.id, qty_required=1, qty_packed=1))
+    db.add(
+        DeliveryScan(
+            delivery_id=old_delivery.id,
+            serial_unit_id=old_pnl_sn.id,
+            scanned_by_id=actor_id,
+            scanned_at=delivered_dt - timedelta(hours=4),
         )
-        db.add(
-            Payment(
-                order_id=old_order.id,
-                invoice_id=old_inv.id,
-                amount_paise=old_order.total_paise,
-                method="BANK",
-                reference="NEFT-SEED-2024",
-                paid_at=delivered_dt,
-                received_by_id=actor_id,
-            )
+    )
+
+    pnl_end_date = delivered_date + relativedelta(months=panel_prod.warranty_months or 240)
+    db.add(
+        Warranty(
+            serial_unit_id=old_pnl_sn.id,
+            customer_id=old_order.customer_id,
+            order_id=old_order.id,
+            start_date=delivered_date,
+            end_date=pnl_end_date,
+            status="ACTIVE" if datetime.now(timezone.utc).date() <= pnl_end_date else "EXPIRED",
         )
+    )
+
+    # Paid invoice for the old order
+    old_inv = Invoice(
+        number="INV-0000",
+        order_id=old_order.id,
+        customer_id=old_order.customer_id,
+        status="PAID",
+        total_paise=old_order.total_paise,
+        paid_paise=old_order.total_paise,
+        issued_at=delivered_dt,
+    )
+    db.add(old_inv)
+    db.flush()
+
+    db.add(
+        InvoiceLine(
+            invoice_id=old_inv.id,
+            description=f"Rooftop Solar Installation ({old_order.number})",
+            qty=1,
+            unit_price_paise=old_order.total_paise,
+        )
+    )
+    db.add(
+        Payment(
+            order_id=old_order.id,
+            invoice_id=old_inv.id,
+            amount_paise=old_order.total_paise,
+            method="BANK",
+            reference="NEFT-SEED-2024",
+            paid_at=delivered_dt,
+            received_by_id=actor_id,
+        )
+    )
 
     db.flush()
