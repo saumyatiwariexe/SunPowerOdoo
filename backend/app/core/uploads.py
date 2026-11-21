@@ -7,6 +7,7 @@ from starlette.concurrency import run_in_threadpool
 from .errors import AppError
 
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
+IMAGE_FILENAME_PATTERN = r"^[0-9a-f]{32}\.(jpg|png|webp)$"
 
 
 def _image_extension(data: bytes) -> str | None:

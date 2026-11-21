@@ -1,16 +1,19 @@
-from sqlalchemy import select
+from datetime import UTC, datetime
+
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.errors import AppError
+from app.core.module_dependencies import require_module
 from app.core.money import minimum_advance_paise
 from app.core.numbering import NumberPrefix, next_number
 
-from .models import Order
+from .models import Order, OrderStatus
 
 
-def get_order(db: Session, order_id: int) -> Order:
-    order = db.get(Order, order_id)
+def get_order(db: Session, order_id: int, *, for_update: bool = False) -> Order:
+    order = db.get(Order, order_id, with_for_update=for_update, populate_existing=for_update)
     if order is None:
         raise AppError("ORDER_NOT_FOUND", "Order not found.", 404)
     return order
@@ -31,5 +34,47 @@ def create_for_quote(db: Session, *, quote_id: int, customer_id: int, total_pais
         advance_min_paise=advance,
     )
     db.add(order)
+    db.flush()
+    return order
+
+
+def _order_paid_paise(db: Session, order_id: int) -> int:
+    payment = require_module("app.modules.billing.models").Payment
+    return db.scalar(
+        select(func.coalesce(func.sum(payment.amount_paise), 0)).where(payment.order_id == order_id)
+    )
+
+
+def confirm(db: Session, order_id: int) -> Order:
+    """Apply R4 and R5 in the caller's transaction."""
+    # Billing takes the same order lock when it records a payment.
+    order = get_order(db, order_id, for_update=True)
+    if order.status == OrderStatus.CONFIRMED:
+        return order
+    if order.status != OrderStatus.DRAFT:
+        raise AppError("ORDER_NOT_DRAFT", "Only a draft order can be confirmed.", 409)
+
+    if order.advance_min_paise > 0:
+        paid_paise = _order_paid_paise(db, order_id)
+        if paid_paise < order.advance_min_paise:
+            remaining = order.advance_min_paise - paid_paise
+            raise AppError("ADVANCE_REQUIRED", f"Record {remaining} more paise to confirm this order.", 409)
+
+    deliveries = require_module("app.modules.deliveries.service")
+    from app.modules.installs.service import create_for_order
+
+    order.status = OrderStatus.CONFIRMED
+    order.confirmed_at = datetime.now(UTC)
+    db.flush()
+    deliveries.create_for_order(db, order.id)
+    create_for_order(db, order.id)
+    return order
+
+
+def mark_installed(db: Session, order_id: int) -> Order:
+    order = get_order(db, order_id, for_update=True)
+    if order.status != OrderStatus.DISPATCHED:
+        raise AppError("ORDER_NOT_DISPATCHED", "Dispatch the order before accepting installation.", 409)
+    order.status = OrderStatus.INSTALLED
     db.flush()
     return order

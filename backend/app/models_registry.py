@@ -2,8 +2,10 @@
 
 import app.core.numbering  # noqa: F401
 import app.modules.catalog.models  # noqa: F401
+import app.modules.installs.models  # noqa: F401
 import app.modules.orders.models  # noqa: F401
 import app.modules.quotes.models  # noqa: F401
+import app.modules.surveys.models  # noqa: F401
 import app.modules.users.models  # noqa: F401
 
 # Person D modules
