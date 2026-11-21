@@ -543,3 +543,26 @@ def test_sales_can_enter_a_phone_enquiry_for_a_new_customer(workspace):
     detail = client.get(f"{API}/leads/{response.json()['data']['id']}").json()["data"]
     assert detail["customer"]["phone"] == "9876543210"
     assert detail["source"] == "CALL"
+
+def test_scheduling_options_follow_contact_and_exclude_booked_visits(workspace):
+    stage = workspace
+    opts = f"{API}/surveys/scheduling-options"
+    lead_path = f"{API}/leads/{stage.lead_id}"
+    visit = {"surveyor_id": stage.actors["surveyor"].id, "scheduled_at": datetime.now(UTC).isoformat()}
+    with Session(stage.engine) as db:
+        db.get(Lead, stage.lead_id).status = LeadStatus.NEW
+        db.get(User, stage.actors["other_surveyor"].id).active = False
+        db.commit()
+    data = stage.client.get(opts).json()["data"]
+    assert data["leads"] == []
+    assert data["surveyors"] == [{"id": visit["surveyor_id"], "name": "surveyor"}]
+    denied = stage.client.post(lead_path + "/survey", json=visit)
+    assert denied.status_code == 409 and "customer call" in denied.json()["error"]["message"]
+    assert stage.client.post(lead_path + "/calls", json={"outcome": "Ready", "called_at": visit["scheduled_at"]}).is_success
+    assert stage.client.get(opts).json()["data"]["leads"] == [{"id": stage.lead_id, "name": "Customer"}]
+    assert stage.client.post(lead_path + "/survey-request").is_success
+    booked = stage.client.post(lead_path + "/survey", json=visit).json()["data"]
+    data = stage.client.get(opts, params={"lead_id": stage.lead_id}).json()["data"]
+    assert data["leads"] == [] and data["existing_survey_id"] == booked["id"]
+    stage.state.actor = stage.actors["surveyor"]
+    assert stage.client.get(opts).status_code == 403

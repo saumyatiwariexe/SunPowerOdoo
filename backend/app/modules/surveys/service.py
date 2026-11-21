@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.errors import AppError
 from app.core.pagination import Pagination
 from app.modules.leads import service as leads
-from app.modules.leads.models import LeadStatus
+from app.modules.leads.models import Lead, LeadStatus
 from app.modules.leads.schemas import LeadUpdate
-from app.modules.users.models import Role, User
+from app.modules.users.models import Customer, Role, User
 
 from .models import Survey, SurveyPhoto, SurveyStatus
 from .schemas import SurveySchedule, SurveySubmit
@@ -49,11 +49,38 @@ def require_assigned(survey: Survey, actor: User) -> None:
         raise AppError("FORBIDDEN", "This survey is assigned to another surveyor.", 403)
 
 
+READY_STATUSES = (LeadStatus.CONTACTED, LeadStatus.SURVEY_PENDING)
+
+
+def scheduling_options(db: Session, lead_id: int | None = None) -> dict:
+    active_visit = select(Survey.id).where(Survey.lead_id == Lead.id, Survey.status != SurveyStatus.REJECTED)
+    eligible = (
+        select(Lead.id, Customer.name).join(Customer, Customer.id == Lead.customer_id)
+        .where(Lead.status.in_(READY_STATUSES), ~active_visit.exists())
+        .order_by(Customer.name, Lead.id)
+    )
+    existing_id = None
+    if lead_id is not None:
+        eligible = eligible.where(Lead.id == lead_id)
+        existing_id = db.scalar(select(Survey.id).where(
+            Survey.lead_id == lead_id, Survey.status != SurveyStatus.REJECTED
+        ))
+    surveyors = select(User.id, User.name).where(User.active.is_(True), User.role == Role.SURVEYOR)
+    return {
+        "leads": [dict(row) for row in db.execute(eligible).mappings()],
+        "surveyors": [dict(row) for row in db.execute(surveyors.order_by(User.name, User.id)).mappings()],
+        "existing_survey_id": existing_id,
+    }
+
+
 def schedule(db: Session, lead_id: int, payload: SurveySchedule, actor: User) -> Survey:
     lead = leads.get_lead(db, lead_id)
     db.refresh(lead, with_for_update=True)
-    if lead.status not in {LeadStatus.CONTACTED, LeadStatus.SURVEY_PENDING}:
-        raise AppError("LEAD_NOT_READY_FOR_SURVEY", "Schedule surveys for contacted leads.", 409)
+    if lead.status not in READY_STATUSES:
+        message = ("Log the first customer call in the lead inbox before scheduling a survey."
+                   if lead.status == LeadStatus.NEW else
+                   f"This lead is marked {lead.status.value.replace('_', ' ').lower()} and cannot be scheduled.")
+        raise AppError("LEAD_NOT_READY_FOR_SURVEY", message, 409)
     current = db.scalar(
         select(Survey.id).where(Survey.lead_id == lead_id, Survey.status != SurveyStatus.REJECTED).limit(1)
     )

@@ -56,6 +56,11 @@ def my_surveys(db: Db, paging: Paging, actor: Surveyor, status: SurveyStatus | N
     return SurveyPage(data=[SurveyRead.model_validate(row) for row in rows], meta=paging.meta(count))
 
 
+@router.get("/surveys/scheduling-options")
+def scheduling_options(db: Db, actor: ReviewStaff, lead_id: int | None = None) -> dict:
+    return {"data": service.scheduling_options(db, lead_id)}
+
+
 @router.get("/surveys/{survey_id}")
 def survey(survey_id: RecordId, db: Db, actor: SurveyStaff) -> dict[str, SurveyRead]:
     return {"data": SurveyRead.model_validate(_viewable_survey(db, survey_id, actor))}

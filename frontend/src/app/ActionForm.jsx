@@ -68,6 +68,7 @@ export default function ActionForm({
           <Field key={f.name} label={f.label} error={errors[f.name]}>
             {f.options ? (
               <select {...props}>
+                {f.placeholder && <option value="" disabled>{f.placeholder}</option>}
                 {f.optional && <option value="">Unassigned</option>}
                 {f.options.map((v) => (
                   <option key={v.value ?? v} value={v.value ?? v}>

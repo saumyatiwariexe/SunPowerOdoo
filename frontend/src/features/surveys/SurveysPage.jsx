@@ -1,9 +1,9 @@
 import React from 'react'
-import { useNavigate } from 'react-router-dom'
 import { api } from '../../app/api'
 import { useAuth } from '../../app/AuthContext'
 import ActionForm from '../../app/ActionForm'
 import { Facts, display } from '../../app/records'
+import ScheduleSurveyButton from './ScheduleSurveyButton'
 import {
   Collection,
   RecordDetail,
@@ -15,23 +15,12 @@ import {
 
 export function SurveysPage() {
   const { currentUser } = useAuth()
-  const navigate = useNavigate()
   const mine = currentUser.role === 'SURVEYOR'
-  const create = {
-    label: 'Schedule survey',
-    fields: [
-      { name: 'lead_id', label: 'Lead ID', type: 'number', min: 1 },
-      { name: 'surveyor_id', label: 'Surveyor ID', type: 'number', min: 1 },
-      { name: 'scheduled_at', label: 'Visit time', type: 'datetime-local' },
-    ],
-    action: ({ lead_id, ...v }) => api.post('/leads/' + lead_id + '/survey', v),
-    onDone: (r) => navigate('/surveys/' + r.id),
-  }
   return (
     <Collection
       title={mine ? 'My site surveys' : 'Site surveys'}
       path={mine ? '/surveys/mine' : '/surveys'}
-      create={mine ? null : create}
+      actions={!mine && <ScheduleSurveyButton />}
       empty="No surveys scheduled."
       columns={[
         ['id', 'Survey', recordLink('/surveys', 'Survey')],

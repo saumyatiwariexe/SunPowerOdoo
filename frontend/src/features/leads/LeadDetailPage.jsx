@@ -5,6 +5,7 @@ import { Facts, DataTable } from '../../app/records'
 import { RecordDetail } from '../../app/RecordPage'
 import ActionForm from '../../app/ActionForm'
 import CallChecklistForm from './CallChecklistForm'
+import ScheduleSurveyButton from '../surveys/ScheduleSurveyButton'
 
 export default function LeadDetailPage() {
   return (
@@ -38,9 +39,7 @@ export default function LeadDetailPage() {
                 />
               )}
               {r.status === 'SURVEY_PENDING' && (
-                <Link className="text-link" to="/surveys">
-                  Schedule a survey →
-                </Link>
+                <ScheduleSurveyButton leadId={r.id} />
               )}
               {r.status === 'SURVEY_DONE' && (
                 <Link className="text-link" to="/quotes">
