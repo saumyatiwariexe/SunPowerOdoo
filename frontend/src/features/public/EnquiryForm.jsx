@@ -2,11 +2,13 @@ import React, { useState } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { api } from '../../app/api.js'
 import Field, { inputCls, selectCls, textareaCls } from '../../app/components/Field.jsx'
+import PublicFrame from './PublicFrame'
+import { paise } from '../../app/ActionForm'
 import Spinner from '../../app/components/Spinner.jsx'
 
 const KW_OPTIONS = ['1', '2', '3', '4', '5']
 const SYSTEM_TYPES = [
-  { value: 'ON_GRID',  label: 'On-Grid (Grid-tied)' },
+  { value: 'ON_GRID', label: 'On-Grid (Grid-tied)' },
   { value: 'OFF_GRID', label: 'Off-Grid (Battery backup)' },
 ]
 
@@ -15,31 +17,34 @@ export default function EnquiryForm() {
   const [params] = useSearchParams()
 
   const [form, setForm] = useState({
-    name:              '',
-    phone:             '',
-    address:           '',
-    pincode:           '',
-    requested_kw:      params.get('kw') || '3',
-    system_type:       params.get('type') || 'ON_GRID',
-    subsidy_interest:  params.get('subsidy') === 'true',
-    monthly_bill:      '',
+    name: '',
+    phone: '',
+    address: '',
+    pincode: '',
+    requested_kw: params.get('kw') || '3',
+    system_type: params.get('type') || 'ON_GRID',
+    subsidy_interest: params.get('subsidy') === 'true',
+    monthly_bill: '',
     // honeypot — must remain empty
-    _honey:            '',
+    _honey: '',
   })
-  const [errors,  setErrors]  = useState({})
+  const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [serverErr, setServerErr] = useState('')
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
 
   const validate = () => {
     const e = {}
-    if (!form.name.trim())    e.name    = 'Full name is required'
-    if (!form.phone.trim())   e.phone   = 'Phone number is required'
-    else if (!/^[6-9]\d{9}$/.test(form.phone.trim())) e.phone = 'Enter a valid 10-digit Indian mobile number'
-    if (!form.address.trim()) e.address  = 'Address is required'
-    if (!form.pincode.trim()) e.pincode  = 'Pincode is required'
-    else if (!/^\d{6}$/.test(form.pincode.trim()))    e.pincode = 'Enter a valid 6-digit pincode'
+    if (!form.name.trim()) e.name = 'Full name is required'
+    if (!form.phone.trim()) e.phone = 'Phone number is required'
+    else if (!/^[6-9]\d{9}$/.test(form.phone.trim()))
+      e.phone = 'Enter a valid 10-digit Indian mobile number'
+    if (!form.address.trim()) e.address = 'Address is required'
+    if (!form.pincode.trim()) e.pincode = 'Pincode is required'
+    else if (!/^\d{6}$/.test(form.pincode.trim())) e.pincode = 'Enter a valid 6-digit pincode'
+    if (form.monthly_bill && !/^\d+(\.\d{1,2})?$/.test(form.monthly_bill))
+      e.monthly_bill = 'Enter an amount with up to two decimal places'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -54,23 +59,23 @@ export default function EnquiryForm() {
     setServerErr('')
     try {
       const payload = {
-        name:            form.name.trim(),
-        phone:           form.phone.trim(),
-        address:         form.address.trim(),
-        pincode:         form.pincode.trim(),
-        requested_kw:    parseFloat(form.requested_kw),
-        system_type:     form.system_type,
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        address: form.address.trim(),
+        pincode: form.pincode.trim(),
+        requested_kw: parseFloat(form.requested_kw),
+        system_type: form.system_type,
         subsidy_interest: form.subsidy_interest,
-        monthly_bill_paise: form.monthly_bill
-          ? Math.round(parseFloat(form.monthly_bill) * 100)
-          : null,
+        monthly_bill_paise: form.monthly_bill ? paise(form.monthly_bill) : null,
       }
       const { data } = await api.post('/public/enquiries', payload)
-      navigate('/thank-you', { state: { reference: data?.reference_no || data?.id } })
+      navigate('/thank-you', { state: { reference: data.reference } })
     } catch (err) {
       if (err.details?.length) {
         const fieldErrs = {}
-        err.details.forEach(d => { if (d.field) fieldErrs[d.field] = d.message })
+        err.details.forEach((d) => {
+          if (d.field) fieldErrs[d.field === 'monthly_bill_paise' ? 'monthly_bill' : d.field] = d.message
+        })
         setErrors(fieldErrs)
       }
       setServerErr(err.message || 'Submission failed. Please try again.')
@@ -80,17 +85,14 @@ export default function EnquiryForm() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 py-10 px-4">
-      <div className="mx-auto max-w-xl">
-        <Link to="/" className="text-sm text-slate-500 hover:text-amber-600 mb-6 inline-block">← Back to home</Link>
-
-        <div className="bg-white rounded-2xl shadow p-8">
-          <div className="text-center mb-8">
-            <div className="text-4xl mb-2">☀️</div>
-            <h1 className="text-2xl font-bold text-slate-900">Get a Free Solar Quote</h1>
-            <p className="text-slate-500 text-sm mt-1">We'll get back to you within 24 hours</p>
-          </div>
-
+    <PublicFrame>
+      <section className="paper enquiry">
+        <div className="form-intro">
+          <Link to="/">? Home</Link>
+          <h1>Request a solar quote</h1>
+          <p>Tell us about your roof and the system you have in mind.</p>
+        </div>
+        <div>
           {serverErr && (
             <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
               {serverErr}
@@ -105,7 +107,7 @@ export default function EnquiryForm() {
               autoComplete="off"
               className="absolute left-[-9999px] opacity-0 h-0"
               value={form._honey}
-              onChange={e => set('_honey', e.target.value)}
+              onChange={(e) => set('_honey', e.target.value)}
               aria-hidden="true"
             />
 
@@ -114,18 +116,23 @@ export default function EnquiryForm() {
                 type="text"
                 className={inputCls}
                 value={form.name}
-                onChange={e => set('name', e.target.value)}
+                onChange={(e) => set('name', e.target.value)}
                 placeholder="Rajesh Kumar"
                 disabled={loading}
               />
             </Field>
 
-            <Field label="Mobile Number" error={errors.phone} required hint="10-digit Indian mobile number">
+            <Field
+              label="Mobile Number"
+              error={errors.phone}
+              required
+              hint="10-digit Indian mobile number"
+            >
               <input
                 type="tel"
                 className={inputCls}
                 value={form.phone}
-                onChange={e => set('phone', e.target.value)}
+                onChange={(e) => set('phone', e.target.value)}
                 placeholder="9876543210"
                 maxLength={10}
                 disabled={loading}
@@ -137,7 +144,7 @@ export default function EnquiryForm() {
                 className={textareaCls}
                 rows={3}
                 value={form.address}
-                onChange={e => set('address', e.target.value)}
+                onChange={(e) => set('address', e.target.value)}
                 placeholder="Flat/House no, Street, Area, City"
                 disabled={loading}
               />
@@ -148,7 +155,7 @@ export default function EnquiryForm() {
                 type="text"
                 className={inputCls}
                 value={form.pincode}
-                onChange={e => set('pincode', e.target.value)}
+                onChange={(e) => set('pincode', e.target.value)}
                 placeholder="400001"
                 maxLength={6}
                 disabled={loading}
@@ -160,11 +167,13 @@ export default function EnquiryForm() {
                 <select
                   className={selectCls}
                   value={form.requested_kw}
-                  onChange={e => set('requested_kw', e.target.value)}
+                  onChange={(e) => set('requested_kw', e.target.value)}
                   disabled={loading}
                 >
-                  {KW_OPTIONS.map(k => (
-                    <option key={k} value={k}>{k} kW</option>
+                  {KW_OPTIONS.map((k) => (
+                    <option key={k} value={k}>
+                      {k} kW
+                    </option>
                   ))}
                 </select>
               </Field>
@@ -173,22 +182,28 @@ export default function EnquiryForm() {
                 <select
                   className={selectCls}
                   value={form.system_type}
-                  onChange={e => set('system_type', e.target.value)}
+                  onChange={(e) => set('system_type', e.target.value)}
                   disabled={loading}
                 >
-                  {SYSTEM_TYPES.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
+                  {SYSTEM_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
                   ))}
                 </select>
               </Field>
             </div>
 
-            <Field label="Monthly Electricity Bill (₹)" error={errors.monthly_bill} hint="Optional — helps us recommend the right size">
+            <Field
+              label="Monthly Electricity Bill (₹)"
+              error={errors.monthly_bill}
+              hint="Optional — helps us recommend the right size"
+            >
               <input
                 type="number"
                 className={inputCls}
                 value={form.monthly_bill}
-                onChange={e => set('monthly_bill', e.target.value)}
+                onChange={(e) => set('monthly_bill', e.target.value)}
                 placeholder="3000"
                 min="0"
                 disabled={loading}
@@ -200,7 +215,7 @@ export default function EnquiryForm() {
                 type="checkbox"
                 className="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
                 checked={form.subsidy_interest}
-                onChange={e => set('subsidy_interest', e.target.checked)}
+                onChange={(e) => set('subsidy_interest', e.target.checked)}
                 disabled={loading}
               />
               <span className="text-sm text-slate-700">
@@ -218,7 +233,7 @@ export default function EnquiryForm() {
             </button>
           </form>
         </div>
-      </div>
-    </div>
+      </section>
+    </PublicFrame>
   )
 }

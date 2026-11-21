@@ -1,21 +1,22 @@
 import React, { useState } from 'react'
 import { api } from '../../app/api.js'
 import Field, { inputCls, selectCls, textareaCls } from '../../app/components/Field.jsx'
+import { paise } from '../../app/ActionForm'
 import Spinner from '../../app/components/Spinner.jsx'
 
 export default function CallChecklistForm({ lead, onCallLogged }) {
   const [form, setForm] = useState({
-    shadow_free_area_sqm:  '',
-    monthly_bill_paise:    '',
-    grid_suitable:         '',
-    outcome:               '',
-    notes:                 '',
+    shadow_free_area_sqm: '',
+    monthly_bill_paise: '',
+    grid_suitable: '',
+    outcome: '',
+    notes: '',
   })
-  const [errors,  setErrors]  = useState({})
+  const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [serverErr, setServerErr] = useState('')
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
 
   const validate = () => {
     const e = {}
@@ -31,19 +32,28 @@ export default function CallChecklistForm({ lead, onCallLogged }) {
     setServerErr('')
     try {
       const payload = {
+        called_at: new Date().toISOString(),
         outcome: form.outcome.trim(),
-        notes:   form.notes.trim() || null,
+        notes: form.notes.trim() || null,
         shadow_free_area_sqm: form.shadow_free_area_sqm ? parseFloat(form.shadow_free_area_sqm) : null,
-        monthly_bill_paise:   form.monthly_bill_paise   ? Math.round(parseFloat(form.monthly_bill_paise) * 100) : null,
-        grid_suitable:        form.grid_suitable !== '' ? form.grid_suitable === 'true' : null,
+        monthly_bill_paise: form.monthly_bill_paise ? paise(form.monthly_bill_paise) : null,
+        grid_suitable: form.grid_suitable !== '' ? form.grid_suitable === 'true' : null,
       }
       const { data } = await api.post(`/leads/${lead.id}/calls`, payload)
       onCallLogged(data)
-      setForm({ shadow_free_area_sqm: '', monthly_bill_paise: '', grid_suitable: '', outcome: '', notes: '' })
+      setForm({
+        shadow_free_area_sqm: '',
+        monthly_bill_paise: '',
+        grid_suitable: '',
+        outcome: '',
+        notes: '',
+      })
     } catch (err) {
       if (err.details?.length) {
         const fe = {}
-        err.details.forEach(d => { if (d.field) fe[d.field] = d.message })
+        err.details.forEach((d) => {
+          if (d.field) fe[d.field] = d.message
+        })
         setErrors(fe)
       }
       setServerErr(err.message || 'Failed to log call')
@@ -69,7 +79,7 @@ export default function CallChecklistForm({ lead, onCallLogged }) {
               type="number"
               className={inputCls}
               value={form.shadow_free_area_sqm}
-              onChange={e => set('shadow_free_area_sqm', e.target.value)}
+              onChange={(e) => set('shadow_free_area_sqm', e.target.value)}
               placeholder="e.g. 25"
               min="0"
               step="0.5"
@@ -82,7 +92,7 @@ export default function CallChecklistForm({ lead, onCallLogged }) {
               type="number"
               className={inputCls}
               value={form.monthly_bill_paise}
-              onChange={e => set('monthly_bill_paise', e.target.value)}
+              onChange={(e) => set('monthly_bill_paise', e.target.value)}
               placeholder="e.g. 3500"
               min="0"
               disabled={loading}
@@ -91,7 +101,12 @@ export default function CallChecklistForm({ lead, onCallLogged }) {
         </div>
 
         <Field label="Grid Suitable?" error={errors.grid_suitable}>
-          <select className={selectCls} value={form.grid_suitable} onChange={e => set('grid_suitable', e.target.value)} disabled={loading}>
+          <select
+            className={selectCls}
+            value={form.grid_suitable}
+            onChange={(e) => set('grid_suitable', e.target.value)}
+            disabled={loading}
+          >
             <option value="">— not assessed —</option>
             <option value="true">Yes</option>
             <option value="false">No</option>
@@ -103,7 +118,7 @@ export default function CallChecklistForm({ lead, onCallLogged }) {
             type="text"
             className={inputCls}
             value={form.outcome}
-            onChange={e => set('outcome', e.target.value)}
+            onChange={(e) => set('outcome', e.target.value)}
             placeholder="e.g. Interested, will confirm in 2 days"
             disabled={loading}
           />
@@ -114,7 +129,7 @@ export default function CallChecklistForm({ lead, onCallLogged }) {
             className={textareaCls}
             rows={2}
             value={form.notes}
-            onChange={e => set('notes', e.target.value)}
+            onChange={(e) => set('notes', e.target.value)}
             placeholder="Additional notes from the call…"
             disabled={loading}
           />

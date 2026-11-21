@@ -5,7 +5,7 @@ const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null)
-  const [loading, setLoading]         = useState(true)
+  const [loading, setLoading] = useState(true)
 
   const fetchMe = useCallback(async () => {
     try {
@@ -18,15 +18,21 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  useEffect(() => { fetchMe() }, [fetchMe])
+  useEffect(() => {
+    fetchMe()
+  }, [fetchMe])
 
   const login = async (email, password) => {
-    await api.post('/auth/login', { email, password })
-    await fetchMe()
+    const { data } = await api.post('/auth/login', { email, password })
+    setCurrentUser(data)
   }
 
   const logout = async () => {
-    try { await api.post('/auth/logout', {}) } catch { /* ignore */ }
+    try {
+      await api.post('/auth/logout', {})
+    } catch {
+      /* ignore */
+    }
     setCurrentUser(null)
   }
 

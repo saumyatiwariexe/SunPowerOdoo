@@ -1,44 +1,58 @@
-import React, { useState } from 'react'
-import { Outlet } from 'react-router-dom'
-import Sidebar from './Sidebar.jsx'
+import React, { useEffect, useRef } from 'react'
+import { Outlet, useLocation } from 'react-router-dom'
+import Sidebar from './Sidebar'
+import AppIcon from './AppIcon'
+import { sections } from './navigation'
 
 export default function Layout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-
+  const menu = useRef(null)
+  const { pathname } = useLocation()
+  const group = sections.find(([, items]) => items.some(([path]) => path === pathname.split('/')[1]))
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 761px)')
+    const closeOnDesktop = () => {
+      if (desktop.matches) menu.current?.close()
+    }
+    desktop.addEventListener('change', closeOnDesktop)
+    return () => desktop.removeEventListener('change', closeOnDesktop)
+  }, [])
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-black/50 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar — fixed on mobile, static on desktop */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-30 w-60 transform transition-transform duration-200
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:static lg:translate-x-0 lg:flex-shrink-0`}
-      >
-        <Sidebar onClose={() => setSidebarOpen(false)} />
+    <div className="workspace">
+      <a href="#workspace-main" className="skip">
+        Skip to content
+      </a>
+      <aside className="rail">
+        <Sidebar />
       </aside>
-
-      {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Top bar (mobile only) */}
-        <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
+      <dialog
+        ref={menu}
+        className="mobile-nav"
+        aria-label="Navigation"
+        onClick={(event) => {
+          if (
+            event.target === menu.current &&
+            event.clientX > menu.current.getBoundingClientRect().right
+          )
+            menu.current.close()
+        }}
+      >
+        <Sidebar onClose={() => menu.current.close()} />
+      </dialog>
+      <div className="workspace-body">
+        <header className="topline">
           <button
-            onClick={() => setSidebarOpen(true)}
-            className="text-slate-500 hover:text-slate-900"
-            aria-label="Open menu"
+            className="menu-button"
+            aria-haspopup="dialog"
+            aria-label="Open navigation"
+            onClick={() => menu.current.showModal()}
           >
-            ☰
+            <AppIcon name="menu" />
           </button>
-          <span className="text-sm font-semibold text-amber-500">SunPower</span>
+          <span>Workspace</span>
+          <span aria-hidden="true">/</span>
+          <strong>{group?.[0] || 'SunPower'}</strong>
         </header>
-
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main id="workspace-main" className="workspace-main" tabIndex="-1">
           <Outlet />
         </main>
       </div>

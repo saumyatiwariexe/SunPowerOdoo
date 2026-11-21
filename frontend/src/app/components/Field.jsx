@@ -1,26 +1,25 @@
-import React from 'react'
-
+import React, { cloneElement, useId } from 'react'
 export default function Field({ label, error, required, hint, children, className = '' }) {
+  const id = useId()
   return (
-    <div className={`flex flex-col gap-1 ${className}`}>
-      {label && (
-        <label className="text-sm font-medium text-slate-700">
-          {label}
-          {required && <span className="ml-1 text-red-500">*</span>}
-        </label>
+    <div className={'field ' + className}>
+      <label htmlFor={id}>
+        {label}
+        {required ? ' *' : ''}
+      </label>
+      {cloneElement(children, {
+        id,
+        'aria-invalid': !!error,
+        'aria-describedby': error || hint ? id + '-note' : undefined,
+      })}
+      {(error || hint) && (
+        <small id={id + '-note'} className={error ? 'form-error' : ''}>
+          {error || hint}
+        </small>
       )}
-      {children}
-      {hint && !error && <p className="text-xs text-slate-500">{hint}</p>}
-      {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
   )
 }
-
-export const inputCls =
-  'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:bg-slate-50 disabled:text-slate-400'
-
-export const selectCls =
-  'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:bg-slate-50'
-
-export const textareaCls =
-  'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200 disabled:bg-slate-50 resize-none'
+export const inputCls = 'control'
+export const selectCls = 'control'
+export const textareaCls = 'control'

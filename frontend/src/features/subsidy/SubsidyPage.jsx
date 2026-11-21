@@ -1,0 +1,59 @@
+import React from 'react'
+import { api, formatPaise } from '../../app/api'
+import ActionForm from '../../app/ActionForm'
+import { Facts } from '../../app/records'
+import { Collection, RecordDetail, recordLink } from '../../app/RecordPage'
+export function SubsidyPage() {
+  return (
+    <Collection
+      title="Subsidy claims"
+      path="/subsidy"
+      empty="No subsidy claims recorded."
+      columns={[
+        ['id', 'Claim', recordLink('/subsidy', 'Claim')],
+        ['scheme', 'Scheme'],
+        ['order_id', 'Order ID'],
+        ['amount_paise', 'Amount'],
+        ['reference_no', 'Reference'],
+        ['status', 'Status'],
+      ]}
+    />
+  )
+}
+export function SubsidyDetail() {
+  return (
+    <RecordDetail title="Subsidy claims" base="/subsidy" singular="Claim">
+      {(r, path, reload) => (
+        <>
+          <Facts
+            items={[
+              ['Scheme', r.scheme],
+              ['Order ID', r.order_id],
+              ['Amount', formatPaise(r.amount_paise)],
+              ['Reference', r.reference_no],
+              ['Notes', r.notes],
+            ]}
+          />
+          <ActionForm
+            primary
+            submit="Update claim"
+            initial={r}
+            fields={[
+              {
+                name: 'status',
+                label: 'Claim status',
+                options: ['NOT_APPLIED', 'SUBMITTED', 'APPROVED', 'PAID', 'REJECTED'],
+              },
+              { name: 'reference_no', label: 'Reference number', optional: true },
+              { name: 'notes', label: 'Notes', type: 'textarea', optional: true },
+            ]}
+            action={(v) =>
+              api.patch(path, { ...v, reference_no: v.reference_no || null, notes: v.notes || null })
+            }
+            onDone={reload}
+          />
+        </>
+      )}
+    </RecordDetail>
+  )
+}
