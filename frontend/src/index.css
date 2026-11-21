@@ -34,6 +34,14 @@
   font-weight: 400 700;
   font-display: swap;
 }
+@font-face { font-family: 'Poppins'; src: url('/fonts/poppins-400-latin.woff2') format('woff2'); font-style: normal; font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Poppins'; src: url('/fonts/poppins-500-latin.woff2') format('woff2'); font-style: normal; font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Poppins'; src: url('/fonts/poppins-600-latin.woff2') format('woff2'); font-style: normal; font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Poppins'; src: url('/fonts/poppins-700-latin.woff2') format('woff2'); font-style: normal; font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Poppins'; src: url('/fonts/poppins-400-devanagari.woff2') format('woff2'); font-style: normal; font-weight: 400; font-display: swap; unicode-range: U+0900-097F, U+20B9; }
+@font-face { font-family: 'Poppins'; src: url('/fonts/poppins-500-devanagari.woff2') format('woff2'); font-style: normal; font-weight: 500; font-display: swap; unicode-range: U+0900-097F, U+20B9; }
+@font-face { font-family: 'Poppins'; src: url('/fonts/poppins-600-devanagari.woff2') format('woff2'); font-style: normal; font-weight: 600; font-display: swap; unicode-range: U+0900-097F, U+20B9; }
+@font-face { font-family: 'Poppins'; src: url('/fonts/poppins-700-devanagari.woff2') format('woff2'); font-style: normal; font-weight: 700; font-display: swap; unicode-range: U+0900-097F, U+20B9; }
 
 :root {
   --ink: #192921;
@@ -767,13 +775,14 @@ details[open] > summary {
 .public-site {
   background: #f8f9f3;
   min-height: 100dvh;
+  font-family: 'Poppins', 'Segoe UI', sans-serif;
 }
 .public-head,
 .public-foot,
 .public-site main {
-  max-width: 1440px;
+  max-width: 1680px;
   margin-inline: auto;
-  padding-inline: clamp(20px, 5.6vw, 88px);
+  padding-inline: clamp(20px, 3.2vw, 54px);
 }
 .public-head,
 .public-foot {
@@ -808,8 +817,9 @@ details[open] > summary {
 }
 .hero-copy em {
   color: var(--pine);
-  font-family: Georgia, 'Times New Roman', serif;
-  font-weight: 400;
+  font-family: inherit;
+  font-style: normal;
+  font-weight: 600;
 }
 .hero-copy p {
   font-size: clamp(0.96rem, 1.25vw, 1.1rem);
@@ -1238,6 +1248,20 @@ details[open] > summary {
   .stage-track > span { display: block; height: 100%; background: #4484cb; border-radius: inherit; }
   .bar-slot i { background: #3977b8; }
   .public-site { background: #fffdf6; }
+  .public-site main { max-width: 1680px; }
+  .public-foot { display: block; max-width: none; height: auto; padding: 0; background: #112d4b; color: #e1ebf5; }
+  .footer-main, .footer-bottom { max-width: 1680px; margin: auto; padding-inline: clamp(20px, 3.2vw, 54px); }
+  .footer-main { display: grid; grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr)); gap: clamp(28px, 5vw, 80px); padding-block: 64px; }
+  .footer-intro { display: grid; justify-items: start; gap: 19px; max-width: 39ch; }
+  .footer-intro .brand { color: white; }
+  .footer-intro p { line-height: 1.65; color: #c5d5e5; }
+  .footer-main nav { display: grid; align-content: start; gap: 13px; }
+  .footer-main nav h2 { color: white; font-size: 1rem; margin-bottom: 8px; }
+  .footer-main nav a { color: #c5d5e5; text-decoration: none; }
+  .footer-main nav a:hover { color: white; text-decoration: underline; text-underline-offset: 4px; }
+  .footer-bottom { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding-block: 18px; border-top: 1px solid #405a75; color: #b9ccdd; }
+  .public-site h1, .public-site h2, .public-site h3 { letter-spacing: -0.035em; }
+  .public-site p { line-height: 1.65; }
   .public-hero { border-color: #e4dfcd; gap: clamp(12px, 2vw, 32px); }
   .hero-copy em { color: #205ea0; }
   .hero-copy p { color: #46596a; }
@@ -1314,8 +1338,11 @@ details[open] > summary {
   .solar-journey { grid-template-columns: 1fr; }
   .public-aftercare, .public-faq { grid-template-columns: 1fr; }
   .plan-studio, .public-components { grid-template-columns: 1fr; }
+  .footer-main { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .footer-intro { grid-column: 1 / -1; }
 }
 @media screen and (max-width: 560px) {
+  .footer-main { padding-block: 42px; gap: 38px 18px; }
   .public-explainer, .public-aftercare, .public-faq { margin-top: 48px; }
   .system-comparison { grid-template-columns: 1fr; }
   .component-map { grid-template-columns: 1fr; gap: 25px; }

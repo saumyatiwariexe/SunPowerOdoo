@@ -45,7 +45,7 @@ export default function LandingPage() {
           <figcaption><AppIcon name="leaf" /><span>Power starts at home.<small>Find the right system for your rooftop.</small></span></figcaption>
         </figure>
       </section>
-      <section className="solar-journey" aria-labelledby="journey-title">
+      <section id="process" className="solar-journey" aria-labelledby="journey-title">
         <div><h2 id="journey-title">From your first question<br />to your first solar day.</h2><p>One team through every step.</p></div>
         <ol>
           <li><AppIcon name="people" size={28} /><strong>Tell us about your roof</strong><p>Share your location and power needs.</p></li>
@@ -53,7 +53,7 @@ export default function LandingPage() {
           <li><AppIcon name="calendar" size={28} /><strong>Install &amp; switch on</strong><p>Your crew fits and tests the system.</p></li>
         </ol>
       </section>
-      <section className="public-explainer" aria-labelledby="system-title">
+      <section id="systems" className="public-explainer" aria-labelledby="system-title">
         <div className="section-line">
           <div>
             <h2 id="system-title">Which system suits your home?</h2>
@@ -155,7 +155,7 @@ export default function LandingPage() {
           Ask about subsidies ↗
         </Link>
       </section>
-      <section className="public-faq" aria-labelledby="faq-title">
+      <section id="faq" className="public-faq" aria-labelledby="faq-title">
         <div>
           <h2 id="faq-title">Before you enquire</h2>
           <p>A few details help us prepare for the first conversation.</p>
