@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     jwt_secret: SecretStr | None = Field(default=None, min_length=32)
     jwt_ttl_seconds: int = Field(default=8 * 60 * 60, gt=0)
     secure_cookies: bool = False
+    sendgrid_api_key: SecretStr | None = None
+    sendgrid_from_email: str | None = None
+    customer_portal_url: str | None = None
     frontend_origin: str = "http://localhost:5173"
     advance_percent: int = Field(default=30, ge=0, le=100)
     uploads_dir: Path = REPO_ROOT / "uploads"

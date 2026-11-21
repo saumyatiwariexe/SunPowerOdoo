@@ -17,6 +17,7 @@ from app.modules.tickets.router import router as tickets_router
 from app.modules.users.router import router as auth_router, staff_router
 from app.modules.users.service import LoginRateLimiter
 from app.modules.warranty.router import router as warranty_router
+from app.modules.portal.router import router as portal_router, staff_router as customer_staff_router
 
 
 def create_app() -> FastAPI:
@@ -51,6 +52,8 @@ def create_app() -> FastAPI:
     api.include_router(surveys_router)
     api.include_router(tickets_router)
     api.include_router(warranty_router)
+    api.include_router(portal_router)
+    api.include_router(customer_staff_router)
 
     # Person D routers
     from app.modules.leads.router import router as leads_router

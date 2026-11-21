@@ -6,6 +6,7 @@ import ProtectedRoute from './ProtectedRoute'
 import Layout from './Layout'
 import { ToastContainer } from './components/Toast'
 import LandingPage from '../features/public/LandingPage'
+import CustomerPortal, { CustomerDocument, CustomerActivation } from '../features/public/CustomerPortal'
 import EnquiryForm from '../features/public/EnquiryForm'
 import ThankYouPage from '../features/public/ThankYouPage'
 import { StaffPage, StaffDetail } from '../features/auth/StaffPage'
@@ -55,6 +56,9 @@ export default function App() {
           <Route path="/enquiry" element={<EnquiryForm />} />
           <Route path="/thank-you" element={<ThankYouPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/customer" element={<CustomerPortal />} />
+          <Route path="/customer/activate" element={<CustomerActivation />} />
+          <Route path="/customer/documents/:kind/:id" element={<CustomerDocument />} />
           <Route
             element={
               <ProtectedRoute>

@@ -6,6 +6,7 @@ import { RecordDetail } from '../../app/RecordPage'
 import ActionForm from '../../app/ActionForm'
 import CallChecklistForm from './CallChecklistForm'
 import ScheduleSurveyButton from '../surveys/ScheduleSurveyButton'
+import CustomerInvite from './CustomerInvite'
 
 export default function LeadDetailPage() {
   return (
@@ -49,6 +50,7 @@ export default function LeadDetailPage() {
               </details>
             </>
           )}
+          <CustomerInvite lead={r} />
           <h2>Call history</h2>
           <DataTable
             rows={r.calls}
