@@ -621,9 +621,11 @@ def test_assignment_choices_are_active_minimal_paginated_and_role_protected(work
     stage.state.actor = stage.actors["support"]
     response = stage.client.get(path, params={"page_size": 1})
     assert response.status_code == 200
-    assert response.json()["meta"]["total"] == 2
-    rows = response.json()["data"] + stage.client.get(path, params={"page_size": 1, "page": 2}).json()["data"]
-    assert {r["id"] for r in rows} == {stage.actors["crew"].id, stage.actors["support"].id}
+    assert response.json()["meta"]["total"] == 3
+    rows = response.json()["data"] + stage.client.get(path, params={"page_size": 1, "page": 2}).json()["data"] + stage.client.get(path, params={"page_size": 1, "page": 3}).json()["data"]
+    assert {r["id"] for r in rows} == {stage.actors["crew"].id, stage.actors["support"].id, stage.actors["director"].id}
+    crew_only = stage.client.get(path, params={"role": "CREW"}).json()["data"]
+    assert [r["id"] for r in crew_only] == [stage.actors["crew"].id]
     assert all(set(r) == {"id", "name", "email", "role"} for r in rows)
     assert all(r["name"] and r["email"] for r in rows)
     stage.state.actor = stage.actors["crew"]

@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
-from app.core.deps import require_roles
+from app.core.deps import get_current_user, require_roles
+from app.modules.users.models import User
 from app.core.pagination import Pagination
 
 from . import service
@@ -25,7 +26,11 @@ def tickets(
     q: Annotated[str, Query(max_length=100)] = "",
     status: TicketStatus | None = None,
     assigned_to_id: Annotated[int | None, Query(gt=0, le=2_147_483_647)] = None,
+    mine: bool = False,
+    user: User = Depends(get_current_user),
 ) -> TicketPage:
+    if mine:
+        assigned_to_id = user.id
     rows, count = service.list_tickets(db, paging, q, status, assigned_to_id)
     return TicketPage(data=[TicketRead.model_validate(row) for row in rows], meta=paging.meta(count))
 

@@ -5,9 +5,11 @@ import { DataTable, Facts, State, Status, useRecord } from '../../app/records'
 import ActionForm from '../../app/ActionForm'
 import Modal from '../../app/components/Modal'
 import { human } from '../../app/navigation'
+import { useAuth } from '../../app/AuthContext'
 
 export const priorities = ['LOW', 'NORMAL', 'HIGH', 'URGENT']
 export default function TicketDetail({ id, onClose, onChange }) {
+  const { currentUser } = useAuth()
   const path = '/tickets/' + id
   const ticket = useRecord(path)
   const t = ticket.data
@@ -57,7 +59,9 @@ export default function TicketDetail({ id, onClose, onChange }) {
                     Open invoice #{invoice} →
                   </Link>
                 )}
-                {['OPEN', 'IN_PROGRESS'].includes(t.status) && <details open>
+                {t.status !== 'CLOSED' && t.assigned_to_id !== currentUser.id && <ActionForm
+                  submit="Assign to me" action={() => api.patch(path, { assigned_to_id: currentUser.id })} onDone={refresh} />}
+                {['OPEN', 'IN_PROGRESS'].includes(t.status) && <details>
                   <summary>Edit issue details</summary>
                   <ActionForm key={t.id + ':' + t.description} submit="Save issue details"
                     initial={{ description: t.description, fault_code: t.fault_code }}
@@ -65,9 +69,10 @@ export default function TicketDetail({ id, onClose, onChange }) {
                     action={values => api.patch(path, values)} onDone={refresh} />
                 </details>}
                 {t.status !== 'CLOSED' && (
-                  <details open>
+                  <details>
                     <summary>Edit assignment and priority</summary>
                     <ActionForm
+                      key={`${t.assigned_to_id}:${t.priority}`}
                       submit="Save changes"
                       initial={{ priority: t.priority, assigned_to_id: t.assigned_to_id }}
                       fields={[

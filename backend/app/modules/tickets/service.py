@@ -61,6 +61,9 @@ def create(db: Session, payload: TicketCreate) -> Ticket:
     )
     db.add(ticket)
     db.flush()
+    if payload.assigned_to_id is not None:
+        update(db, ticket.id, TicketPatch(assigned_to_id=payload.assigned_to_id))
+    describe_tickets(db, [ticket])
     return ticket
 
 
@@ -76,11 +79,12 @@ def update(db: Session, ticket_id: int, payload: TicketPatch) -> Ticket:
     assignee_id = changes.get("assigned_to_id")
     if assignee_id is not None:
         assignee = db.get(User, assignee_id)
-        if assignee is None or not assignee.active or not (has_role(assignee, Role.CREW) or has_role(assignee, Role.SUPPORT)):
-            raise AppError("INVALID_TICKET_ASSIGNEE", "Assign an active crew or support user.", 409)
+        if assignee is None or not assignee.active or not any(has_role(assignee, role) for role in (Role.CREW, Role.SUPPORT, Role.DIRECTOR)):
+            raise AppError("INVALID_TICKET_ASSIGNEE", "Assign an active crew, support or director user.", 409)
     for field, value in changes.items():
         setattr(ticket, field, value)
     db.flush()
+    describe_tickets(db, [ticket])
     return ticket
 
 

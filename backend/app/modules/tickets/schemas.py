@@ -19,6 +19,7 @@ class TicketCreate(BaseModel):
     fault_code: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
     description: Note
     priority: TicketPriority = TicketPriority.NORMAL
+    assigned_to_id: RecordId | None = None
 
 
 class TicketPatch(BaseModel):
