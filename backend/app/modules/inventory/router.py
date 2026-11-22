@@ -13,11 +13,12 @@ router = APIRouter(tags=["inventory"])
 def get_products_stock(
     q: str | None = Query(default=None),
     low_stock: bool = Query(default=False),
+    product_id: int | None = Query(default=None, gt=0),
     paging: Pagination = Depends(),
     db: Session = Depends(get_db),
     _user=Depends(require_roles("WAREHOUSE", "DIRECTOR", "SALES", "SUPPORT")),
 ):
-    items, total = service.list_stock(db, paging, q=q, low_stock_only=low_stock)
+    items, total = service.list_stock(db, paging, q=q, low_stock_only=low_stock, product_id=product_id)
     return {"data": items, "meta": paging.meta(total)}
 
 

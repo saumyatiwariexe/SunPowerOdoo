@@ -9,8 +9,10 @@ from app.modules.inventory.models import SerialUnit, StockMovement
 from app.modules.inventory.schemas import StockReceiveIn
 
 
-def list_stock(db: Session, paging: Pagination, q: str | None = None, low_stock_only: bool = False) -> tuple[list[dict], int]:
+def list_stock(db: Session, paging: Pagination, q: str | None = None, low_stock_only: bool = False, product_id: int | None = None) -> tuple[list[dict], int]:
     stmt = select(Product)
+    if product_id is not None:
+        stmt = stmt.where(Product.id == product_id)
     if q:
         stmt = stmt.where(Product.name.ilike(f"%{q}%") | Product.sku.ilike(f"%{q}%"))
     if low_stock_only:

@@ -1668,3 +1668,6 @@ details[open] > summary {
   .ticket-workspace .board { grid-template-columns: minmax(0, 1fr); }
   .lane-cards { max-height: 356px; }
 }
+@media screen {
+  .stock-receipt { margin-block: 16px; padding: 14px 18px; border: 1px solid #a9d4cb; border-radius: 8px; color: #205d50; background: #edf7f3; line-height: 1.6; }
+}
