@@ -15,6 +15,7 @@ from sqlalchemy import select
 
 from . import service
 from .schemas import OrderDetailRead, OrderPage, OrderRead
+from .models import OrderStatus
 
 router = APIRouter(
     prefix="/orders", tags=["orders"], dependencies=[Depends(require_roles("DIRECTOR", "SALES"))]
@@ -30,8 +31,8 @@ def order_list(db: Db, paging: Annotated[Pagination, Depends()]) -> OrderPage:
 
 
 @router.get("/options")
-def options(db: Db, paging: Annotated[Pagination, Depends()]) -> dict:
-    rows, count = service.order_options(db, paging)
+def options(db: Db, paging: Annotated[Pagination, Depends()], status: OrderStatus | None = None) -> dict:
+    rows, count = service.order_options(db, paging, status=status)
     return {"data": rows, "meta": paging.meta(count)}
 
 

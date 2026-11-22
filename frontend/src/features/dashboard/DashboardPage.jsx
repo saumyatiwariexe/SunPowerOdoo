@@ -13,6 +13,7 @@ export default function DashboardPage() {
   const [error, setError] = useState('')
   const summary = useRecord('/reports/summary?range=' + range)
   const unfinished = useRecord('/reports/unfinished')
+  const draftOrders = useRecord('/orders/options?status=DRAFT&page_size=5')
   const [sort, setSort] = useState('desc')
   const profitQuery = new URLSearchParams({ range, sort })
   const profit = useRecord('/reports/profit-per-job?' + profitQuery)
@@ -37,7 +38,7 @@ export default function DashboardPage() {
   return (
     <>
       <Heading title="Operations overview">
-        <button className="button" onClick={() => { summary.reload(); unfinished.reload(); profit.reload(); hours.reload(); setRevision(v => v + 1) }}>Refresh data</button>
+        <button className="button" onClick={() => { summary.reload(); unfinished.reload(); draftOrders.reload(); profit.reload(); hours.reload(); setRevision(v => v + 1) }}>Refresh data</button>
         <button className="button" onClick={() => window.print()}>
           Print
         </button>
@@ -126,6 +127,15 @@ export default function DashboardPage() {
           </>
         )}
       </State>
+      <section className="collection-panel" aria-label="Customer orders awaiting advance">
+        <div className="collection-summary"><strong>Customer orders awaiting advance</strong><Link className="text-link" to="/orders">View all orders</Link></div>
+        <State resource={draftOrders}>
+          <DataTable rows={draftOrders.data} empty="No customer orders are awaiting an advance." columns={[
+            ['number', 'Order', row => <Link className="text-link" to={`/orders/${row.id}`}>{row.number}</Link>],
+            ['customer_name', 'Customer'], ['phone', 'Phone'], ['total_paise', 'Total'], ['advance_min_paise', 'Minimum advance'],
+          ]} />
+        </State>
+      </section>
       <div className="section-line">
         <h2>Reports</h2>
         <div className="switcher">
