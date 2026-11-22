@@ -6,7 +6,8 @@ import { DataTable, Heading, State, useRecord } from '../../app/records'
 import AppIcon from '../../app/AppIcon'
 
 export default function DashboardPage() {
-  const [range, setRange] = useState('today')
+  const [range, setRange] = useState('month')
+  const [revision, setRevision] = useState(0)
   const [month, setMonth] = useState('')
   const [report, setReport] = useState('Profit per job')
   const [error, setError] = useState('')
@@ -36,6 +37,7 @@ export default function DashboardPage() {
   return (
     <>
       <Heading title="Operations overview">
+        <button className="button" onClick={() => { summary.reload(); unfinished.reload(); profit.reload(); hours.reload(); setRevision(v => v + 1) }}>Refresh data</button>
         <button className="button" onClick={() => window.print()}>
           Print
         </button>
@@ -59,12 +61,13 @@ export default function DashboardPage() {
           </button>
         ))}
       </div>
+      <p className="section-help">Financial figures and completed jobs cover {range === 'today' ? 'today' : range === 'week' ? 'this week' : 'this month'} (India time). Open work and stock show the current totals.</p>
       <State resource={summary}>
         {summary.data && (
           <>
             <dl className="financials">
               {[
-                ['revenue_paise', 'Revenue'],
+                ['revenue_paise', 'Invoiced revenue'],
                 ['collected_paise', 'Collected'],
                 ['outstanding_paise', 'Outstanding'],
               ].map(([k, name]) => (
@@ -74,7 +77,8 @@ export default function DashboardPage() {
                 </div>
               ))}
             </dl>
-            <RevenueTrend range={range} />
+            {summary.data.revenue_paise === 0 && <p className="section-help">No invoices were issued in this period. Payments received appear under Collected; they are separate from invoiced revenue.</p>}
+            <RevenueTrend key={revision} range={range} />
             <div className="dashboard-split">
               <section>
                 <h2>Work in progress</h2>
