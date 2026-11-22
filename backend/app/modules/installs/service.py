@@ -10,6 +10,8 @@ from app.modules.orders import service as orders
 from app.modules.orders.models import OrderStatus
 from app.modules.users.models import Role, User, Customer
 from app.modules.orders.models import Order
+from app.modules.quotes.models import Quote
+from app.modules.leads.models import Lead
 
 from .models import InstallCrew, InstallJob, InstallStatus, JobPhoto
 from .schemas import InstallCompletion, InstallSchedule
@@ -158,10 +160,16 @@ def accept(db: Session, job_id: int, actor: User) -> InstallJob:
 
 
 def describe_jobs(db, rows):
-    details = {o.id: (o,c) for o,c in db.execute(select(Order, Customer).join(Customer, Customer.id==Order.customer_id).where(Order.id.in_([r.order_id for r in rows])))}
+    details = {o.id: (o, c, requested_kw) for o, c, requested_kw in db.execute(
+        select(Order, Customer, Lead.requested_kw)
+        .join(Customer, Customer.id == Order.customer_id)
+        .join(Quote, Quote.id == Order.quote_id)
+        .join(Lead, Lead.id == Quote.lead_id)
+        .where(Order.id.in_([r.order_id for r in rows])))}
     users = {u.id:u.name for u in db.scalars(select(User).where(User.id.in_({c.user_id for r in rows for c in r.crew})))}
     for row in rows:
-        order, customer = details[row.order_id]
+        order, customer, requested_kw = details[row.order_id]
         row.order_number = order.number
         row.customer_name, row.customer_phone, row.site_address = customer.name, customer.phone, customer.address
+        row.planned_kw = requested_kw
         row.crew_names = ', '.join(users.get(c.user_id, str(c.user_id)) for c in row.crew)

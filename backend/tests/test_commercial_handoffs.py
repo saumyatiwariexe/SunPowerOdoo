@@ -756,3 +756,7 @@ def test_director_can_find_new_install_before_crew_is_assigned(workspace):
     assert response.json()['data'][0]['customer_name'] == 'Customer'
     assert response.json()['data'][0]['scheduled_start'] is None
     assert stage.client.get(f'{API}/installs/{job_id}').status_code == 200
+    with Session(stage.engine) as db:
+        expected_kw = db.get(Lead, stage.lead_id).requested_kw
+    assert response.json()['data'][0]['planned_kw'] == expected_kw
+    assert stage.client.get(f'{API}/installs/{job_id}').json()['data']['planned_kw'] == expected_kw

@@ -47,6 +47,7 @@ export function InstallDetail() {
           <Facts
             items={[
               ['Customer', r.customer_name], ['Phone', r.customer_phone], ['Site', r.site_address], ['Order', r.order_number || r.order_id],
+              ['Planned system', r.planned_kw ? `${r.planned_kw} kW` : 'Not recorded'],
               ['Crew', r.crew_names || 'Unassigned'],
               ['From', display('scheduled_start', r.scheduled_start)],
               ['Until', display('scheduled_end', r.scheduled_end)],
@@ -55,7 +56,7 @@ export function InstallDetail() {
               ['Test notes', r.test_notes],
             ]}
           />
-          <p className="state">{r.status === 'SCHEDULED' ? (r.crew.length ? 'Assigned crew: start the installation to record photos, test results and the customer signature.' : 'Support or Director must assign a crew and visit time before work can start.') : r.status === 'IN_PROGRESS' ? 'Required to finish: site photo, finish time, installed kW, customer name and signature.' : r.status === 'COMPLETED' ? 'Proof is saved. Assigned crew must accept the installation to finish the order.' : 'Installation accepted. Completion proof is read-only.'}</p>
+          <p className="state">{r.status === 'SCHEDULED' ? (r.crew.length ? 'Assigned crew: start the installation to record photos, test results and the customer signature.' : 'Support or Director must assign a crew and visit time before work can start.') : r.status === 'IN_PROGRESS' ? 'Upload a site photo, confirm the installed size, collect the signature, and complete the job. Start and finish times are recorded automatically.' : r.status === 'COMPLETED' ? 'Proof is saved. Assigned crew must accept the installation to finish the order.' : 'Installation accepted. Completion proof is read-only.'}</p>
           <Photos photos={r.photos} />
           {r.signature_url && (
             <a className="text-link" href={r.signature_url}>
@@ -118,7 +119,8 @@ function Completion({ row, path, reload }) {
       if (blob) values.signature = new File([blob], 'signature.png', { type: 'image/png' })
     }
     if (!values.signature) throw new Error('Draw the customer signature or upload a signature image.')
-    return imageUpload(path + '/complete', { ...values, started_at: row.started_at })
+    return imageUpload(path + '/complete', { ...values, started_at: row.started_at,
+      finished_at: new Date().toISOString() })
   }
   return (
     <section className="stack">
@@ -130,8 +132,8 @@ function Completion({ row, path, reload }) {
       <ActionForm
         primary
         submit="Complete installation"
+        initial={{ system_kw: row.system_kw ?? row.planned_kw ?? '', signed_by_name: row.signed_by_name || row.customer_name || '' }}
         fields={[
-          { name: 'finished_at', label: 'Finish time', type: 'datetime-local' },
           {
             name: 'system_kw',
             label: 'Installed capacity (kW)',
@@ -140,7 +142,7 @@ function Completion({ row, path, reload }) {
             step: 'any',
           },
           { name: 'test_notes', label: 'Test notes', type: 'textarea', optional: true },
-          { name: 'signed_by_name', label: 'Customer name' },
+          { name: 'signed_by_name', label: 'Name on signature', hint: 'Prefilled from the customer record; correct it if another person signs.' },
           {
             name: 'signature',
             label: 'Or upload a signature image',

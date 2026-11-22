@@ -58,6 +58,7 @@ class InstallRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     customer_name: str | None = None
+    planned_kw: float | None = None
     customer_phone: str | None = None
     site_address: str | None = None
     order_number: str | None = None
