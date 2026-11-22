@@ -20,12 +20,13 @@ def list_orders(db: Session, paging: Pagination) -> tuple[list[Order], int]:
     return list(db.scalars(query)), total
 
 
-def order_options(db: Session, paging: Pagination) -> tuple[list[dict], int]:
-    total = db.scalar(select(func.count()).select_from(Order)) or 0
+def order_options(db: Session, paging: Pagination, status: OrderStatus | None = None) -> tuple[list[dict], int]:
+    filters = [Order.status == status] if status else []
+    total = db.scalar(select(func.count()).select_from(Order).where(*filters)) or 0
     query = select(
-        Order.id, Order.number, Order.status, Order.total_paise,
+        Order.id, Order.number, Order.status, Order.total_paise, Order.advance_min_paise,
         Customer.name.label("customer_name"), Customer.phone,
-    ).join(Customer, Customer.id == Order.customer_id).order_by(Order.id.desc())
+    ).join(Customer, Customer.id == Order.customer_id).where(*filters).order_by(Order.id.desc())
     rows = db.execute(query.offset(paging.offset).limit(paging.page_size)).mappings()
     return [dict(row) for row in rows], total
 

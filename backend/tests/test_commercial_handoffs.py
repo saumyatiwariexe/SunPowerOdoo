@@ -647,6 +647,10 @@ def test_order_choices_include_customer_reference_and_pagination(workspace):
     assert row["phone"] == "9999999999"
     assert row["number"].startswith("ORD-")
     assert type(row["total_paise"]) is int
+    drafts = stage.client.get(f"{API}/orders/options", params={"status": "DRAFT"}).json()
+    assert drafts["meta"]["total"] == 2
+    assert [r["id"] for r in drafts["data"]] == [second, first]
+    assert stage.client.get(f"{API}/orders/options", params={"status": "CONFIRMED"}).json()["data"] == []
     assert stage.client.get(f"{API}/orders/options", params={"page_size": 1, "page": 2}).json()["data"][0]["id"] == first
     stage.state.actor = stage.actors["support"]
     assert stage.client.get(f"{API}/orders/options").status_code == 403

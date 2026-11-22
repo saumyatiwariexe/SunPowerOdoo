@@ -7,14 +7,21 @@ import { PaymentForm } from '../invoices/InvoicesPage'
 import ActionForm from '../../app/ActionForm'
 import CustomerPayments from '../public/CustomerPayments'
 export function OrdersPage() {
+  const [status, setStatus] = useState('DRAFT')
   return (
     <Collection
       title="Orders"
-      path="/orders"
+      key={status}
+      path={'/orders/options' + (status ? '?status=' + status : '')}
+      tools={<label className="field">Order status<select value={status} onChange={event => setStatus(event.target.value)}>
+        <option value="DRAFT">Awaiting advance</option><option value="">All orders</option>
+        {['CONFIRMED', 'DISPATCHED', 'INSTALLED', 'CLOSED', 'CANCELLED'].map(value => <option key={value} value={value}>{value}</option>)}
+      </select></label>}
       empty="Accepted quotes appear here as draft orders."
       columns={[
         ['number', 'Order', recordLink('/orders', 'Order')],
-        ['customer_id', 'Customer ID'],
+        ['customer_name', 'Customer'],
+        ['phone', 'Phone'],
         ['status', 'Status'],
         ['total_paise', 'Total'],
         ['advance_min_paise', 'Minimum advance'],
