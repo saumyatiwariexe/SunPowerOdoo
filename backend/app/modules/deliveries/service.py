@@ -45,7 +45,7 @@ def create_for_order(db: Session, order_id: int) -> Delivery:
 
 
 def list_deliveries(db: Session, status: str | None = None) -> list[dict]:
-    stmt = select(Delivery).order_by(Delivery.created_at.desc())
+    stmt = select(Delivery).order_by(Delivery.id.desc())
     if status:
         stmt = stmt.where(Delivery.status == status)
     deliveries = db.scalars(stmt).all()

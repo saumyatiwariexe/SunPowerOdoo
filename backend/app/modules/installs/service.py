@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select, case
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import AppError
@@ -54,7 +54,7 @@ def list_jobs(
         select(InstallJob)
         .where(*filters)
         .options(selectinload(InstallJob.crew), selectinload(InstallJob.photos))
-        .order_by(case((InstallJob.status == InstallStatus.ACCEPTED, 1), else_=0), InstallJob.scheduled_start.nulls_last(), InstallJob.id.desc())
+        .order_by(InstallJob.id.desc())
     )
     rows = list(db.scalars(query.offset(paging.offset).limit(paging.page_size)))
     describe_jobs(db, rows)

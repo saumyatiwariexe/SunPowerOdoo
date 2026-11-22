@@ -46,7 +46,7 @@ def list_claims(
         stmt = stmt.where(SubsidyClaim.status == s)
     total = db.scalar(select(func.count()).select_from(stmt.subquery()))
     rows = db.scalars(
-        stmt.order_by(SubsidyClaim.created_at.desc())
+        stmt.order_by(SubsidyClaim.id.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
     ).all()

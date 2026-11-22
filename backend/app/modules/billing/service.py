@@ -204,7 +204,7 @@ def list_invoices(db: Session, paging: Pagination, status: str | None = None) ->
     if status:
         stmt = stmt.where(Invoice.status == status)
     total = db.scalar(select(func.count()).select_from(stmt.subquery()))
-    invoices = db.execute(stmt.order_by(Invoice.created_at.desc(), Invoice.id.desc())
+    invoices = db.execute(stmt.order_by(Invoice.id.desc())
                           .offset(paging.offset).limit(paging.page_size))
 
     out = []
