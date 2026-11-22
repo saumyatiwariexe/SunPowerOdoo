@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, case
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import AppError
@@ -32,16 +32,18 @@ def list_surveys(
     total = db.scalar(select(func.count()).select_from(Survey).where(*filters)) or 0
     query = (
         select(Survey).where(*filters).options(selectinload(Survey.photos))
-        .order_by(Survey.scheduled_at, Survey.id)
+        .order_by(case((Survey.status.in_([SurveyStatus.SCHEDULED, SurveyStatus.SUBMITTED]), 0), else_=1), Survey.scheduled_at, Survey.id.desc())
     )
-    rows = db.scalars(query.offset(paging.offset).limit(paging.page_size))
-    return list(rows), total
+    rows = list(db.scalars(query.offset(paging.offset).limit(paging.page_size)))
+    describe_surveys(db, rows)
+    return rows, total
 
 
 def get_survey(db: Session, survey_id: int, *, for_update: bool = False) -> Survey:
     survey = db.get(Survey, survey_id, with_for_update=for_update, populate_existing=for_update)
     if survey is None:
         raise AppError("SURVEY_NOT_FOUND", "Survey not found.", 404)
+    describe_surveys(db, [survey])
     return survey
 
 
@@ -144,3 +146,12 @@ def review(db: Session, survey_id: int, note: str, actor: User, *, approved: boo
         survey.status = SurveyStatus.REJECTED
     db.flush()
     return survey
+
+
+def describe_surveys(db, rows):
+    customers = {lead.id:customer for lead,customer in db.execute(select(Lead, Customer).join(Customer, Customer.id==Lead.customer_id).where(Lead.id.in_([r.lead_id for r in rows])))}
+    users = {u.id:u.name for u in db.scalars(select(User).where(User.id.in_([r.surveyor_id for r in rows])))}
+    for row in rows:
+        customer = customers[row.lead_id]
+        row.customer_name, row.customer_phone, row.site_address = customer.name, customer.phone, customer.address
+        row.surveyor_name = users.get(row.surveyor_id)

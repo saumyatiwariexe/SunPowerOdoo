@@ -40,6 +40,11 @@ class SurveyPhotoRead(BaseModel):
 class SurveyRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    customer_name: str | None = None
+    customer_phone: str | None = None
+    site_address: str | None = None
+    surveyor_name: str | None = None
+
     id: int
     lead_id: int
     surveyor_id: int

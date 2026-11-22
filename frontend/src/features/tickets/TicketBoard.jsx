@@ -6,6 +6,7 @@ import { api } from '../../app/api'
 import { DataTable, Heading, Pager, State, useRecord } from '../../app/records'
 import { human } from '../../app/navigation'
 import Modal from '../../app/components/Modal'
+import EquipmentSearch from '../lookup/EquipmentSearch'
 import ActionForm from '../../app/ActionForm'
 import TicketDetail, { priorities } from './TicketDetail'
 
@@ -34,6 +35,7 @@ function Queue({ status, query, board, openTicket }) {
                 </button>
               ),
             ],
+            ['customer_name', 'Customer'], ['serial_no', 'Equipment serial'],
             ['description', 'Description'],
             ['priority', 'Priority', (t) => human(t.priority)],
             ['status', 'Status'],
@@ -58,7 +60,7 @@ function Queue({ status, query, board, openTicket }) {
               {t.number}
             </span>
             <strong>{t.description}</strong>
-            <small>{t.fault_code}</small>
+            <small>{t.customer_name} ? {t.serial_no}</small>
             <span className="ticket-meta">
               <span className={'priority ' + t.priority}>{human(t.priority)}</span>
               <span>{assignee(t)}</span>
@@ -71,7 +73,7 @@ function Queue({ status, query, board, openTicket }) {
     </section>
   )
 }
-const assignee = (t) => (t.assigned_to_id ? 'Staff #' + t.assigned_to_id : 'Unassigned')
+const assignee = (t) => t.assigned_to_name || (t.assigned_to_id ? 'Staff #' + t.assigned_to_id : 'Unassigned')
 
 export default function TicketBoard() {
   const { currentUser } = useAuth()
@@ -167,13 +169,15 @@ export default function TicketBoard() {
       </div>
       {params.get('new') && (
         <Modal title="Create ticket" onClose={() => set({ new: null, serial: null })}>
+          {!params.get('serial') ? <EquipmentSearch assignedOnly onSelect={r => set({ serial: r.serial_no })} /> : <>
+          <p>Equipment: <strong>{params.get('serial')}</strong> <button type="button" className="text-link" onClick={() => set({ serial: null })}>Change equipment</button></p>
           <ActionForm
             primary
             submit="Create ticket"
             initial={{ serial_no: params.get('serial') || '' }}
             fields={[
               { name: 'serial_no', label: 'Equipment serial number', maxLength: 100 },
-              { name: 'fault_code', label: 'Fault code', maxLength: 64 },
+              { name: 'fault_code', label: 'Issue category', options: ['NO_POWER', 'LOW_GENERATION', 'INVERTER_FAULT', 'BATTERY_FAULT', 'WIRING', 'MONITORING', 'OTHER'] },
               { name: 'description', label: 'Issue description', type: 'textarea', maxLength: 2000 },
               { name: 'priority', label: 'Priority', options: priorities, value: 'NORMAL' },
             ]}
@@ -183,6 +187,7 @@ export default function TicketBoard() {
               openTicket(t.id)
             }}
           />
+          </>}
         </Modal>
       )}
       {params.get('ticket') && (

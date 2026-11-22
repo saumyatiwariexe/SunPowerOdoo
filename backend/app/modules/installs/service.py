@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, case
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import AppError
@@ -8,7 +8,8 @@ from app.core.deps import has_role
 from app.core.pagination import Pagination
 from app.modules.orders import service as orders
 from app.modules.orders.models import OrderStatus
-from app.modules.users.models import Role, User
+from app.modules.users.models import Role, User, Customer
+from app.modules.orders.models import Order
 
 from .models import InstallCrew, InstallJob, InstallStatus, JobPhoto
 from .schemas import InstallCompletion, InstallSchedule
@@ -31,6 +32,7 @@ def get_job(db: Session, job_id: int, *, for_update: bool = False) -> InstallJob
     job = db.get(InstallJob, job_id, with_for_update=for_update, populate_existing=for_update)
     if job is None:
         raise AppError("INSTALL_NOT_FOUND", "Install job not found.", 404)
+    describe_jobs(db, [job])
     return job
 
 
@@ -52,9 +54,11 @@ def list_jobs(
         select(InstallJob)
         .where(*filters)
         .options(selectinload(InstallJob.crew), selectinload(InstallJob.photos))
-        .order_by(InstallJob.scheduled_start.nulls_last(), InstallJob.id)
+        .order_by(case((InstallJob.status == InstallStatus.ACCEPTED, 1), else_=0), InstallJob.scheduled_start.nulls_last(), InstallJob.id.desc())
     )
-    return list(db.scalars(query.offset(paging.offset).limit(paging.page_size))), total
+    rows = list(db.scalars(query.offset(paging.offset).limit(paging.page_size)))
+    describe_jobs(db, rows)
+    return rows, total
 
 
 def schedule(db: Session, job_id: int, payload: InstallSchedule) -> InstallJob:
@@ -147,3 +151,13 @@ def accept(db: Session, job_id: int, actor: User) -> InstallJob:
     job.accepted_at = datetime.now(UTC)
     db.flush()
     return job
+
+
+def describe_jobs(db, rows):
+    details = {o.id: (o,c) for o,c in db.execute(select(Order, Customer).join(Customer, Customer.id==Order.customer_id).where(Order.id.in_([r.order_id for r in rows])))}
+    users = {u.id:u.name for u in db.scalars(select(User).where(User.id.in_({c.user_id for r in rows for c in r.crew})))}
+    for row in rows:
+        order, customer = details[row.order_id]
+        row.order_number = order.number
+        row.customer_name, row.customer_phone, row.site_address = customer.name, customer.phone, customer.address
+        row.crew_names = ', '.join(users.get(c.user_id, str(c.user_id)) for c in row.crew)

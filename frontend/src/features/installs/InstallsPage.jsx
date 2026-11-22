@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useRef, useState } from 'react'
 import SignatureField from './SignatureField'
 import { api } from '../../app/api'
 import { useAuth } from '../../app/AuthContext'
@@ -16,17 +16,20 @@ import {
 
 export function InstallsPage() {
   const { currentUser } = useAuth()
+  const [status, setStatus] = useState('SCHEDULED')
   const mine = hasRole(currentUser, 'CREW') && !hasRole(currentUser, 'SUPPORT') && !hasRole(currentUser, 'DIRECTOR')
   return (
     <Collection
       title={mine ? 'My installations' : 'Installations'}
-      path={mine ? '/installs/mine' : '/installs'}
+      key={status}
+      path={(mine ? '/installs/mine' : '/installs') + (status ? '?status=' + status : '')}
+      tools={<label className="field">Job status<select value={status} onChange={e => setStatus(e.target.value)}><option value="">All jobs</option>{['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'ACCEPTED'].map(s => <option key={s} value={s}>{s.replaceAll('_', ' ')}</option>)}</select></label>}
       empty="No installation jobs yet."
       columns={[
         ['id', 'Job', recordLink('/installs', 'Job')],
-        ['order_id', 'Order ID'],
+        ['customer_name', 'Customer'], ['site_address', 'Site'], ['order_number', 'Order'],
         ['scheduled_start', 'Scheduled start'],
-        ['crew_lead_id', 'Crew lead ID'],
+        ['crew_names', 'Crew'],
         ['status', 'Status'],
       ]}
     />
@@ -42,8 +45,8 @@ export function InstallDetail() {
         <>
           <Facts
             items={[
-              ['Order ID', r.order_id],
-              ['Crew', r.crew.map((c) => '#' + c.user_id).join(', ') || 'Unassigned'],
+              ['Customer', r.customer_name], ['Phone', r.customer_phone], ['Site', r.site_address], ['Order', r.order_number || r.order_id],
+              ['Crew', r.crew_names || 'Unassigned'],
               ['From', display('scheduled_start', r.scheduled_start)],
               ['Until', display('scheduled_end', r.scheduled_end)],
               ['System (kW)', r.system_kw],
@@ -51,6 +54,7 @@ export function InstallDetail() {
               ['Test notes', r.test_notes],
             ]}
           />
+          <p className="state">{r.status === 'SCHEDULED' ? (r.crew.length ? 'Assigned crew: start the installation to record photos, test results and the customer signature.' : 'Support or Director must assign a crew and visit time before work can start.') : r.status === 'IN_PROGRESS' ? 'Required to finish: site photo, finish time, installed kW, customer name and signature.' : r.status === 'COMPLETED' ? 'Proof is saved. Assigned crew must accept the installation to finish the order.' : 'Installation accepted. Completion proof is read-only.'}</p>
           <Photos photos={r.photos} />
           {r.signature_url && (
             <a className="text-link" href={r.signature_url}>
@@ -67,7 +71,7 @@ export function InstallDetail() {
                 { name: 'scheduled_start', label: 'Start', type: 'datetime-local' },
                 { name: 'scheduled_end', label: 'End', type: 'datetime-local' },
               ]}
-              initial={{ crew_lead_id: r.crew_lead_id, crew_ids: r.crew.map((c) => c.user_id) }}
+              initial={{ crew_lead_id: r.crew_lead_id, crew_ids: r.crew.map((c) => c.user_id), scheduled_start: localTime(r.scheduled_start), scheduled_end: localTime(r.scheduled_end) }}
               action={(v) => api.patch(path + '/schedule', v)}
               onDone={reload}
             />
@@ -91,7 +95,7 @@ export function InstallDetail() {
               <Completion key={r.id} row={r} path={path} reload={reload} />
             </>
           )}
-          {crew && r.status === 'COMPLETED' && (
+          {crew && r.crew.some(member => member.user_id === currentUser.id) && r.status === 'COMPLETED' && (
             <ActionForm
               primary
               submit="Accept installation"
@@ -149,4 +153,10 @@ function Completion({ row, path, reload }) {
       />
     </section>
   )
+}
+
+function localTime(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 }

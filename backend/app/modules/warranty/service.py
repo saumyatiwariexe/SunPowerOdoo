@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from dateutil.relativedelta import relativedelta
-from sqlalchemy import select
+from sqlalchemy import select, func, or_
 from sqlalchemy.orm import Session
 from app.core.errors import AppError
 from app.modules.catalog.models import Product
@@ -62,7 +62,7 @@ def start_for_delivery(db: Session, delivery_id: int) -> list[Warranty]:
 def check_by_serial(db: Session, serial_no: str) -> dict:
     """Contract R9: computes real-time in_warranty status from end_date."""
     clean_sn = serial_no.strip()
-    su = db.scalar(select(SerialUnit).where(SerialUnit.serial_no == clean_sn))
+    su = db.scalar(select(SerialUnit).where(func.lower(SerialUnit.serial_no) == clean_sn.lower()))
     if not su:
         raise AppError("NOT_FOUND", f"Serial number '{clean_sn}' not found", 404)
 
@@ -78,7 +78,7 @@ def check_by_serial(db: Session, serial_no: str) -> dict:
         if warranty.status == "VOID":
             warranty_status = "VOID"
             in_warranty = False
-        elif today <= warranty.end_date and warranty.status == "ACTIVE":
+        elif warranty.start_date <= today <= warranty.end_date and warranty.status == "ACTIVE":
             warranty_status = "ACTIVE"
             in_warranty = True
         else:
@@ -106,6 +106,22 @@ def check_by_serial(db: Session, serial_no: str) -> dict:
 def check_by_phone(db: Session, phone: str) -> list[dict]:
     serial_numbers = db.scalars(
         select(SerialUnit.serial_no).join(Customer, Customer.id == SerialUnit.customer_id)
-        .where(Customer.phone == phone.strip()).order_by(SerialUnit.serial_no)
+        .where(func.replace(func.replace(func.replace(Customer.phone, " ", ""), "-", ""), "+", "").in_(("".join(c for c in phone if c.isdigit())[-10:], "91" + "".join(c for c in phone if c.isdigit())[-10:]))).order_by(SerialUnit.serial_no)
     ).all()
     return [check_by_serial(db, serial_no) for serial_no in serial_numbers]
+
+
+def search_equipment(db: Session, q: str, assigned_only: bool = False) -> list[dict]:
+    query = select(SerialUnit, Product, Customer, Warranty).join(Product, Product.id == SerialUnit.product_id).outerjoin(Customer, Customer.id == SerialUnit.customer_id).outerjoin(Warranty, Warranty.serial_unit_id == SerialUnit.id)
+    term = q.strip()
+    if term:
+        query = query.where(or_(SerialUnit.serial_no.icontains(term, autoescape=True), Customer.name.icontains(term, autoescape=True), Customer.phone.icontains(term, autoescape=True)))
+    if assigned_only:
+        query = query.where(SerialUnit.customer_id.is_not(None))
+    rows = db.execute(query.order_by(SerialUnit.id.desc()).limit(30)).all()
+    today = datetime.now(timezone.utc).date()
+    return [{"serial_no": s.serial_no, "product_name": p.name, "customer_id": c.id if c else None,
+             "customer_name": c.name if c else "Warehouse stock", "customer_phone": c.phone if c else None,
+             "end_date": w.end_date if w else None,
+             "warranty_status": "ACTIVE" if w and w.status == "ACTIVE" and w.start_date <= today <= w.end_date else w.status if w and w.status == "VOID" else "EXPIRED" if w else "NO_WARRANTY"}
+            for s,p,c,w in rows]

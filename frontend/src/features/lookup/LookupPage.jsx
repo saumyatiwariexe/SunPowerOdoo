@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
 import { hasRole } from '../../app/navigation'
+import EquipmentSearch from './EquipmentSearch'
 import { DataTable, Heading, State, useRecord } from '../../app/records'
 export default function LookupPage() {
   const { currentUser } = useAuth()
@@ -11,7 +12,8 @@ export default function LookupPage() {
   function find(event) {
     event.preventDefault()
     const f = new FormData(event.currentTarget)
-    setQuery(new URLSearchParams({ [f.get('by')]: f.get('term').trim() }).toString())
+    const next = new URLSearchParams({ [f.get('by')]: f.get('term').trim() }).toString()
+    if (next === query) result.reload(); else setQuery(next)
   }
   return (
     <>
@@ -30,6 +32,7 @@ export default function LookupPage() {
         />
         <button className="button primary">Look up</button>
       </form>
+      <EquipmentSearch onSelect={row => setQuery(new URLSearchParams({ serial: row.serial_no }).toString())} />
       {query && (
         <State resource={result}>
           <DataTable

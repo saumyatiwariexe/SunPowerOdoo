@@ -24,6 +24,8 @@ class TicketCreate(BaseModel):
 class TicketPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    description: Note | None = None
+    fault_code: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)] | None = None
     assigned_to_id: RecordId | None = None
     priority: TicketPriority | None = None
     status: Literal[TicketStatus.IN_PROGRESS] | None = None
@@ -64,6 +66,11 @@ class TicketLineRead(BaseModel):
 
 class TicketRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
+    customer_name: str | None = None
+    customer_phone: str | None = None
+    serial_no: str | None = None
+    assigned_to_name: str | None = None
 
     id: int
     number: str

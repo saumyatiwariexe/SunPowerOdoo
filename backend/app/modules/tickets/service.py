@@ -10,7 +10,7 @@ from app.core.pagination import Pagination
 from app.modules.billing import service as billing
 from app.modules.catalog.service import get_product
 from app.modules.inventory.models import SerialUnit
-from app.modules.users.models import Role, User
+from app.modules.users.models import Role, User, Customer
 from app.modules.warranty.service import check_by_serial
 
 from .models import Ticket, TicketLine, TicketStatus
@@ -21,6 +21,7 @@ def get_ticket(db: Session, ticket_id: int, *, for_update: bool = False) -> Tick
     ticket = db.get(Ticket, ticket_id, with_for_update=for_update, populate_existing=for_update)
     if ticket is None:
         raise AppError("TICKET_NOT_FOUND", "Ticket not found.", 404)
+    describe_tickets(db, [ticket])
     return ticket
 
 
@@ -29,7 +30,7 @@ def list_tickets(
 ) -> tuple[list[Ticket], int]:
     filters = []
     if q:
-        filters.append(Ticket.number.icontains(q, autoescape=True))
+        filters.append(Ticket.number.icontains(q, autoescape=True) | Ticket.description.icontains(q, autoescape=True) | Ticket.customer_id.in_(select(Customer.id).where(Customer.name.icontains(q, autoescape=True))) | Ticket.serial_unit_id.in_(select(SerialUnit.id).where(SerialUnit.serial_no.icontains(q, autoescape=True))))
     if status is not None:
         filters.append(Ticket.status == status)
     if assigned_to_id is not None:
@@ -39,7 +40,9 @@ def list_tickets(
         select(Ticket).where(*filters).options(selectinload(Ticket.lines))
         .order_by(Ticket.id.desc()).offset(paging.offset).limit(paging.page_size)
     )
-    return list(db.scalars(query)), total
+    rows = list(db.scalars(query))
+    describe_tickets(db, rows)
+    return rows, total
 
 
 def create(db: Session, payload: TicketCreate) -> Ticket:
@@ -66,6 +69,8 @@ def update(db: Session, ticket_id: int, payload: TicketPatch) -> Ticket:
     if ticket.status == TicketStatus.CLOSED:
         raise AppError("TICKET_CLOSED", "A closed ticket cannot be edited.", 409)
     changes = payload.model_dump(exclude_unset=True)
+    if {"description", "fault_code"} & changes.keys() and ticket.status == TicketStatus.RESOLVED:
+        raise AppError("TICKET_RESOLVED", "Issue details cannot change after resolution.", 409)
     if "status" in changes and ticket.status != TicketStatus.OPEN:
         raise AppError("TICKET_NOT_OPEN", "Only an open ticket can move to in progress.", 409)
     assignee_id = changes.get("assigned_to_id")
@@ -134,3 +139,15 @@ def close(db: Session, ticket_id: int) -> tuple[Ticket, int | None]:
     ticket.status = TicketStatus.CLOSED
     db.flush()
     return ticket, invoice.id if invoice is not None else None
+
+
+def describe_tickets(db, rows):
+    customers = {c.id:c for c in db.scalars(select(Customer).where(Customer.id.in_([r.customer_id for r in rows])))}
+    serials = {s.id:s.serial_no for s in db.scalars(select(SerialUnit).where(SerialUnit.id.in_([r.serial_unit_id for r in rows])))}
+    users = {u.id:u.name for u in db.scalars(select(User).where(User.id.in_([r.assigned_to_id for r in rows if r.assigned_to_id])))}
+    for row in rows:
+        customer = customers.get(row.customer_id)
+        row.customer_name = customer.name if customer else None
+        row.customer_phone = customer.phone if customer else None
+        row.serial_no = serials.get(row.serial_unit_id)
+        row.assigned_to_name = users.get(row.assigned_to_id)

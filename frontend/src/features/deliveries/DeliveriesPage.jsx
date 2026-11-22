@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { api } from '../../app/api'
 import { useAuth } from '../../app/AuthContext'
 import { hasRole } from '../../app/navigation'
@@ -6,10 +6,13 @@ import ActionForm from '../../app/ActionForm'
 import { DataTable, Facts } from '../../app/records'
 import { Collection, RecordDetail, recordLink } from '../../app/RecordPage'
 export function DeliveriesPage() {
+  const [status, setStatus] = useState('PENDING')
   return (
     <Collection
       title="Deliveries"
-      path="/deliveries"
+      key={status}
+      path={'/deliveries' + (status ? '?status=' + status : '')}
+      tools={<label className="field">Delivery status<select value={status} onChange={e => setStatus(e.target.value)}><option value="">All deliveries</option>{['PENDING', 'DISPATCHED', 'DELIVERED'].map(s => <option key={s} value={s}>{s}</option>)}</select></label>}
       empty="Confirmed orders appear here for picking."
       columns={[
         ['id', 'Delivery', recordLink('/deliveries', 'Delivery')],
@@ -52,6 +55,12 @@ export function DeliveryDetail() {
           />
           {r.status === 'PENDING' && (hasRole(currentUser, 'WAREHOUSE') || hasRole(currentUser, 'DIRECTOR')) && (
             <>
+              <ActionForm
+                key={r.lines.reduce((n, line) => n + line.scanned_serials.length, 0)}
+                submit="Pick selected serial"
+                fields={[{ name: 'serial_no', label: 'Available stock for this pick list', placeholder: 'Choose equipment from stock', options: r.lines.flatMap(line => (line.available_serials || []).map(serial => ({ value: serial, label: line.product_name + ' - ' + serial }))) }]}
+                action={values => api.post(path + '/scan', values)} onDone={reload} />
+              <p className="section-help">Or scan/type the physical serial below. Available choices exclude units already reserved by another delivery.</p>
               <ActionForm
                 submit="Scan serial"
                 fields={[{ name: 'serial_no', label: 'Serial number' }]}

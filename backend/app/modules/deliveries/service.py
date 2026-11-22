@@ -97,6 +97,11 @@ def get_delivery_detail(db: Session, delivery_id: int) -> dict:
             "qty_required": ln.qty_required,
             "qty_packed": ln.qty_packed,
             "scanned_serials": line_scans,
+            "available_serials": list(db.scalars(select(SerialUnit.serial_no).where(
+                SerialUnit.product_id == ln.product_id,
+                SerialUnit.status == "IN_STOCK", SerialUnit.delivery_id.is_(None),
+                SerialUnit.id.not_in(select(DeliveryScan.serial_unit_id)),
+            ).order_by(SerialUnit.id.desc()).limit(30))) if delivery.status == "PENDING" and prod and prod.tracks_serial and len(line_scans) < ln.qty_required else [],
         })
 
     return {
