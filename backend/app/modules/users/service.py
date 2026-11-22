@@ -56,7 +56,7 @@ def authenticate(db: Session, email: str, password: str) -> User:
 
 def list_staff(db: Session, paging: Pagination) -> tuple[list[User], int]:
     total = db.scalar(select(func.count()).select_from(User)) or 0
-    query = select(User).order_by(User.name, User.id).offset(paging.offset).limit(paging.page_size)
+    query = select(User).order_by(User.id.desc()).offset(paging.offset).limit(paging.page_size)
     return list(db.scalars(query)), total
 
 

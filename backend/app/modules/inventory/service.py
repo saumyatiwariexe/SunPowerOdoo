@@ -16,7 +16,7 @@ def list_stock(db: Session, paging: Pagination, q: str | None = None, low_stock_
     if low_stock_only:
         stmt = stmt.where(Product.on_hand <= Product.reorder_level)
     total = db.scalar(select(func.count()).select_from(stmt.subquery()))
-    products = db.scalars(stmt.order_by(Product.name, Product.id).offset(paging.offset).limit(paging.page_size))
+    products = db.scalars(stmt.order_by(Product.id.desc()).offset(paging.offset).limit(paging.page_size))
 
     result = []
     for p in products:

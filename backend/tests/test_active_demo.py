@@ -13,6 +13,10 @@ from seed.seed_catalog import seed_catalog
 from seed.seed_active_demo import add_active_demo
 from app.modules.users.models import User
 from app.modules.installs.models import InstallJob
+from app.modules.orders.models import Order
+from app.modules.billing.models import Invoice
+from app.modules.subsidy.models import SubsidyClaim
+from datetime import UTC, datetime, timedelta
 
 
 def test_active_work_is_assigned_and_lookup_ticket_chain_works():
@@ -27,6 +31,15 @@ def test_active_work_is_assigned_and_lookup_ticket_chain_works():
         seed_catalog(db)
         assert add_active_demo(db) == 16
         assert add_active_demo(db) == 0
+        for index, order in enumerate(db.scalars(select(Order).order_by(Order.id).limit(4))):
+            # Deliberately reverse timestamps: record numbers, not date ties,
+            # determine the requested default order.
+            created = datetime.now(UTC) - timedelta(days=index)
+            db.add(Invoice(number=f'SORT-{index}', order_id=order.id, customer_id=order.customer_id,
+                           issued_at=created, created_at=created))
+            if not db.scalar(select(SubsidyClaim).where(SubsidyClaim.order_id == order.id)):
+                db.add(SubsidyClaim(order_id=order.id, scheme='Test', created_at=created))
+        db.flush()
         users = {u.role: u.id for u in db.scalars(select(User))}
         assert db.scalar(select(func.count()).select_from(InstallJob).where(InstallJob.status == 'IN_PROGRESS')) == 1
     app = create_app()
@@ -98,4 +111,14 @@ def test_active_work_is_assigned_and_lookup_ticket_chain_works():
         assert client.post(path + '/close').status_code == 409
         assert client.post(path + '/confirm').status_code == 200
         assert client.post(path + '/close').status_code == 200
+        login('DIRECTOR')
+        for module in ('leads', 'surveys', 'installs', 'products', 'packages', 'stock', 'users', 'orders', 'quotes', 'tickets', 'deliveries', 'invoices', 'subsidy'):
+            response = client.get('/api/v1/' + module, params={'page_size': 3})
+            assert response.status_code == 200, module
+            ids = [row['id'] for row in response.json()['data']]
+            assert len(ids) >= 2, module
+            assert ids == sorted(ids, reverse=True), module
+            if module != 'deliveries':
+                second = client.get('/api/v1/' + module, params={'page_size': 3, 'page': 2}).json()['data']
+                assert all(row['id'] < ids[-1] for row in second), module
     engine.dispose()

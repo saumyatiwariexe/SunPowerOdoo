@@ -36,7 +36,7 @@ def list_leads(
             .where(Customer.name.ilike(f"%{q}%") | Customer.phone.ilike(f"%{q}%"))
         )
     total = db.scalar(select(func.count()).select_from(stmt.subquery()))
-    rows = db.scalars(stmt.order_by(Lead.created_at.desc()).offset((page - 1) * page_size).limit(page_size)).all()
+    rows = db.scalars(stmt.order_by(Lead.id.desc()).offset((page - 1) * page_size).limit(page_size)).all()
     return list(rows), total or 0
 
 

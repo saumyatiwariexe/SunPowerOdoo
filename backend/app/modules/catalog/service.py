@@ -26,7 +26,7 @@ def list_products(db: Session, pagination: Pagination, q: str = "") -> tuple[lis
     if q:
         filters.append(or_(Product.name.icontains(q, autoescape=True), Product.sku.icontains(q, autoescape=True)))
     total = db.scalar(select(func.count()).select_from(Product).where(*filters))
-    query = select(Product).where(*filters).order_by(Product.id)
+    query = select(Product).where(*filters).order_by(Product.id.desc())
     rows = db.scalars(query.offset(pagination.offset).limit(pagination.page_size)).all()
     return list(rows), total or 0
 
@@ -87,7 +87,7 @@ def list_packages(
     if active is not None:
         filters.append(Package.active.is_(active))
     total = db.scalar(select(func.count()).select_from(Package).where(*filters))
-    query = select(Package).where(*filters).order_by(Package.id)
+    query = select(Package).where(*filters).order_by(Package.id.desc())
     rows = db.scalars(query.offset(pagination.offset).limit(pagination.page_size)).all()
     return list(rows), total or 0
 

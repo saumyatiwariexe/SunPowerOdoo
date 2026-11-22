@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import func, or_, select, case
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import AppError
@@ -32,7 +32,7 @@ def list_surveys(
     total = db.scalar(select(func.count()).select_from(Survey).where(*filters)) or 0
     query = (
         select(Survey).where(*filters).options(selectinload(Survey.photos))
-        .order_by(case((Survey.status.in_([SurveyStatus.SCHEDULED, SurveyStatus.SUBMITTED]), 0), else_=1), Survey.scheduled_at, Survey.id.desc())
+        .order_by(Survey.id.desc())
     )
     rows = list(db.scalars(query.offset(paging.offset).limit(paging.page_size)))
     describe_surveys(db, rows)

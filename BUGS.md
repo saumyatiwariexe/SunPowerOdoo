@@ -138,3 +138,21 @@ and additionally verifies crew-only filtering. All 19 affected regression tests
 then passed; the production frontend build passed. Native browser automation was
 unavailable following the previous turn's URL-confidence stop; this ticket repair
 was verified through API tests and the live read-only queue checks.
+
+## Customer login and consistent record order — 22 November 2026
+
+- Customer onboarding now emails a generated password and login URL. First sign-in
+  activates the account within the 24-hour invitation window; resending beforehand
+  replaces the password. Active accounts retain their credentials. Passwords are
+  bcrypt-hashed, never returned in staff responses, and not logged. Legacy activation
+  links remain supported. SendGrid tests use mocks; no real email was sent in this pass.
+- The onboarding panel displays the configured login address and identifies a
+  localhost address that cannot be used from a customer's device.
+- Operational lists now order by descending numeric database ID before pagination.
+  This fixes tied creation timestamps and inconsistent alphabetical/status/date
+  sorting in leads, deliveries, surveys, installs, invoices, subsidy, catalog,
+  stock and staff. Quotes, orders and tickets already used this ordering.
+  Assignment dropdowns keep name ordering; reports keep their analytical sorting.
+- Validation: 52 backend tests passed; frontend build passed. Extended ordering
+  regression failed before the change and passed afterward across 13 module lists,
+  including page boundaries and reversed invoice/subsidy timestamps.
