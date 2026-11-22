@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { api } from '../../app/api'
 import { DataTable } from '../../app/records'
 
-export default function EquipmentSearch({ onSelect, assignedOnly = false }) {
-  const [query, setQuery] = useState('')
+export default function EquipmentSearch({ onSelect, assignedOnly = false, initialQuery = '' }) {
+  const [query, setQuery] = useState(initialQuery)
   const [rows, setRows] = useState([])
   const [busy, setBusy] = useState(true)
   const [error, setError] = useState('')

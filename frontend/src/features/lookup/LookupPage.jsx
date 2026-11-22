@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
 import { hasRole } from '../../app/navigation'
 import EquipmentSearch from './EquipmentSearch'
 import { DataTable, Heading, State, useRecord } from '../../app/records'
 export default function LookupPage() {
+  const [searchParams] = useSearchParams()
   const { currentUser } = useAuth()
   const [query, setQuery] = useState('')
   const result = useRecord(query && '/lookup?' + query)
@@ -32,7 +33,7 @@ export default function LookupPage() {
         />
         <button className="button primary">Look up</button>
       </form>
-      <EquipmentSearch onSelect={row => setQuery(new URLSearchParams({ serial: row.serial_no }).toString())} />
+      <EquipmentSearch initialQuery={searchParams.get('q') || ''} onSelect={row => setQuery(new URLSearchParams({ serial: row.serial_no }).toString())} />
       {query && (
         <State resource={result}>
           <DataTable

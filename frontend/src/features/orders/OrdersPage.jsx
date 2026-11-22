@@ -6,6 +6,8 @@ import { Collection, RecordDetail, recordLink } from '../../app/RecordPage'
 import { PaymentForm } from '../invoices/InvoicesPage'
 import ActionForm from '../../app/ActionForm'
 import CustomerPayments from '../public/CustomerPayments'
+import { useAuth } from '../../app/AuthContext'
+import { hasRole } from '../../app/navigation'
 export function OrdersPage() {
   const [status, setStatus] = useState('DRAFT')
   return (
@@ -65,6 +67,7 @@ export function OrderDetail() {
 }
 
 function OrderConnections({ orderId, status }) {
+  const { currentUser } = useAuth()
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -79,5 +82,6 @@ function OrderConnections({ orderId, status }) {
       catch (e) { setError(e.message) } finally { setBusy(false) }
     }}>{busy ? 'Creating invoice…' : 'Create invoice for this order'}</button>}
     {data.subsidy_claim_id && <Link className="button" to={`/subsidy/${data.subsidy_claim_id}`}>View subsidy claim</Link>}
+    {data.customer_name && hasRole(currentUser, 'DIRECTOR') && <Link className="button" to={`/lookup?q=${encodeURIComponent(data.customer_name)}`}>View customer serials</Link>}
   </div>{error && <p role="alert" className="form-error">{error}</p>}</section>
 }
