@@ -57,6 +57,12 @@ class PhotoRead(BaseModel):
 class InstallRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    customer_name: str | None = None
+    customer_phone: str | None = None
+    site_address: str | None = None
+    order_number: str | None = None
+    crew_names: str | None = None
+
     id: int
     order_id: int
     crew_lead_id: int | None

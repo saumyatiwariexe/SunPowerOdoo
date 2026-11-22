@@ -22,7 +22,7 @@ TicketId = Annotated[int, Path(gt=0, le=2_147_483_647)]
 def tickets(
     db: Db,
     paging: Annotated[Pagination, Depends()],
-    q: Annotated[str, Query(max_length=24)] = "",
+    q: Annotated[str, Query(max_length=100)] = "",
     status: TicketStatus | None = None,
     assigned_to_id: Annotated[int | None, Query(gt=0, le=2_147_483_647)] = None,
 ) -> TicketPage:

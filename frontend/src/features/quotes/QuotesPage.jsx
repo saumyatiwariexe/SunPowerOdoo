@@ -51,7 +51,11 @@ export function QuoteDetail() {
           <DataTable rows={r.lines} columns={moneyLines} />
           {r.status === 'DRAFT' && (
             <>
-              <details className="no-print">
+              <ActionForm submit="Save quote details"
+                initial={{ valid_until: r.valid_until, subsidy_paise: String(r.subsidy_paise / 100) }}
+                fields={[{ name: 'valid_until', label: 'Valid until', type: 'date' }, { name: 'subsidy_paise', label: 'Subsidy (rupees)', type: 'money' }]}
+                action={values => api.patch(path, values)} onDone={reload} />
+              <details open className="no-print">
                 <summary>Edit line item</summary>
                 <ActionForm
                   submit="Save line"

@@ -20,3 +20,10 @@ def lookup_serial(
     if serial is not None and serial.strip():
         return {"data": service.check_by_serial(db, serial)}
     return {"data": service.check_by_phone(db, phone)}
+
+
+@router.get("/lookup/search")
+def search_equipment(q: str = Query(default="", max_length=100), assigned_only: bool = False,
+                     db: Session = Depends(get_db),
+                     _user=Depends(require_roles("SUPPORT", "DIRECTOR", "CREW", "WAREHOUSE"))):
+    return {"data": service.search_equipment(db, q, assigned_only)}

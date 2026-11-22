@@ -38,8 +38,9 @@ export default function TicketDetail({ id, onClose, onChange }) {
                   items={[
                     ['Fault code', t.fault_code],
                     ['Priority', human(t.priority)],
-                    ['Customer', 'Customer #' + t.customer_id],
-                    ['Assigned to', t.assigned_to_id ? 'Staff #' + t.assigned_to_id : 'Unassigned'],
+                    ['Customer', t.customer_name || 'Customer #' + t.customer_id],
+                    ['Phone', t.customer_phone], ['Equipment serial', t.serial_no],
+                    ['Assigned to', t.assigned_to_name || (t.assigned_to_id ? 'Staff #' + t.assigned_to_id : 'Unassigned')],
                     ['Service charge', t.billable ? 'Billable' : 'Covered by warranty'],
                     ['Confirmation', t.customer_confirmed_at ? 'Customer confirmed' : 'Pending'],
                   ]}
@@ -56,8 +57,15 @@ export default function TicketDetail({ id, onClose, onChange }) {
                     Open invoice #{invoice} →
                   </Link>
                 )}
+                {['OPEN', 'IN_PROGRESS'].includes(t.status) && <details open>
+                  <summary>Edit issue details</summary>
+                  <ActionForm key={t.id + ':' + t.description} submit="Save issue details"
+                    initial={{ description: t.description, fault_code: t.fault_code }}
+                    fields={[{ name: 'description', label: 'Issue description', type: 'textarea', maxLength: 2000 }, { name: 'fault_code', label: 'Issue category', maxLength: 64 }]}
+                    action={values => api.patch(path, values)} onDone={refresh} />
+                </details>}
                 {t.status !== 'CLOSED' && (
-                  <details>
+                  <details open>
                     <summary>Edit assignment and priority</summary>
                     <ActionForm
                       submit="Save changes"

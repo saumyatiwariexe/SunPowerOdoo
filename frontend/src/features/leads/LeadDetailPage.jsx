@@ -24,6 +24,12 @@ export default function LeadDetailPage() {
               ['Subsidy interest', r.subsidy_interest ? 'Yes' : 'No'],
             ]}
           />
+          {!['WON', 'LOST'].includes(r.status) && <details open>
+            <summary>Edit enquiry requirements</summary>
+            <ActionForm submit="Save requirements" initial={{ requested_kw: r.requested_kw, system_type: r.system_type, notes: r.notes || '' }}
+              fields={[{ name: 'requested_kw', label: 'Required capacity (kW)', type: 'number', min: 0.1, max: 100, step: 0.1 }, { name: 'system_type', label: 'System type', options: ['ON_GRID', 'OFF_GRID'] }, { name: 'notes', label: 'Site requirements / follow-up notes', type: 'textarea', optional: true }]}
+              action={values => api.patch(path, values)} onDone={reload} />
+          </details>}
           {r.lost_reason && <p>Reason for loss: {r.lost_reason}</p>}
           {!['LOST', 'WON'].includes(r.status) && (
             <>

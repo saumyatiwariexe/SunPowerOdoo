@@ -154,3 +154,25 @@ Use a SendGrid API key with Mail Send permission and a [verified sender](https:/
 Without email configuration, invitations fail explicitly. The account invitation is saved before sending; if SendGrid fails, retry the invitation. A successful response means SendGrid accepted the email, not that it reached the inbox. Automated tests mock delivery; verify real delivery after configuring your account. Click/open tracking is disabled for invitation emails. Raw invitation tokens are not stored and are removed from the browser address bar when the activation page opens.
 
 Customer sessions use a separate, two-hour HttpOnly cookie and cannot access staff APIs. Login and invitations are rate limited per API process; shared rate limiting is needed for multiple public workers. The portal currently shows the latest 50 records per section and up to 100 equipment units.
+# Active demo work
+
+The bulk dataset includes historical completed jobs. To add work for the standard
+demo users without deleting records or resetting progress, run from `backend/`
+with your existing virtual environment and intended demo database:
+
+```powershell
+python -m seed.seed_active_demo --apply
+```
+
+This adds 16 fictional customer projects once: new/contacted leads, scheduled and
+submitted surveys, draft/sent quotes, an unpaid order, pending/dispatched deliveries,
+scheduled/in-progress/completed installations, and open/in-progress/resolved tickets.
+It requires the demo users and active 3 kW on-grid catalogue package to exist.
+Re-running skips these customers; it does not reset their workflow.
+
+Use `crew@sunpower.test` for Vikram Arora and Neha Sood's scheduled jobs and Arjun
+Mehta's in-progress job. Use `surveyor@sunpower.test` for Gurpreet Singh and Meera
+Kapoor's scheduled surveys, and `support@sunpower.test` for Manpreet Kaur's tickets.
+The existing demo password remains unchanged. Select the status filter to see
+other stages; search serial lookup by customer name, phone or serial number.
+
