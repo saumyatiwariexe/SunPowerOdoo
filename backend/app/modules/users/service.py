@@ -61,7 +61,7 @@ def list_staff(db: Session, paging: Pagination) -> tuple[list[User], int]:
 
 
 def assignment_options(db: Session, paging: Pagination, role: Role | None = None) -> tuple[list[dict], int]:
-    eligible = (role,) if role is not None else (Role.CREW, Role.SUPPORT)
+    eligible = (role,) if role is not None else (Role.CREW, Role.SUPPORT, Role.DIRECTOR)
     filters = (User.active.is_(True), or_(
         User.role.in_(eligible),
         User.role_grants.any(UserRoleGrant.role.in_(eligible)),

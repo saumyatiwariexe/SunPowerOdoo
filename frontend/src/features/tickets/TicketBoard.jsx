@@ -60,14 +60,14 @@ function Queue({ status, query, board, openTicket }) {
               {t.number}
             </span>
             <strong>{t.description}</strong>
-            <small>{t.customer_name} ? {t.serial_no}</small>
+            <small>{t.customer_name} · {t.serial_no}</small>
             <span className="ticket-meta">
               <span className={'priority ' + t.priority}>{human(t.priority)}</span>
               <span>{assignee(t)}</span>
             </span>
           </button>
         ))}
-        {!rows.length && <div className="empty-lane">No tickets</div>}
+        {!rows.length && <div className="empty-lane">{params.get('mine') ? 'No tickets assigned to you in this stage.' : 'No tickets in this stage.'}</div>}
         <Pager meta={resource.meta} page={page} setPage={setPage} />
       </State>
     </section>
@@ -89,7 +89,7 @@ export default function TicketBoard() {
   }
   const query = new URLSearchParams()
   if (params.get('q')) query.set('q', params.get('q'))
-  if (mine) query.set('assigned_to_id', currentUser.id)
+  if (mine) query.set('mine', 'true')
   const openTicket = (id) => set({ ticket: id, new: null, serial: null })
   return (
     <>
@@ -98,7 +98,7 @@ export default function TicketBoard() {
           <AppIcon name="search" size={16} />
           Serial lookup
         </Link>
-        <button className="button primary" onClick={() => set({ new: 1 })}>
+        <button className="button primary" onClick={() => set({ new: 1, ticket: null, serial: null })}>
           ＋ Create ticket
         </button>
       </Heading>
@@ -128,10 +128,10 @@ export default function TicketBoard() {
         >
           <AppIcon name="search" size={17} />
           <input
-            aria-label="Ticket number"
-            maxLength="24"
+            aria-label="Search tickets by number, customer, serial or issue"
+            maxLength="100"
             type="search"
-            placeholder="Search ticket number"
+            placeholder="Search ticket, customer or serial"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value)
@@ -156,6 +156,7 @@ export default function TicketBoard() {
           </button>
         )}
       </div>
+      {mine && <p className="section-help" role="status">Showing tickets assigned to {currentUser.name}. Creating a ticket does not assign it automatically. Use “Assign to me” inside a ticket or select yourself when creating one.</p>}
       <div className={board ? 'board' : ''}>
         {(board ? stages : ['']).map((status) => (
           <Queue
@@ -174,12 +175,13 @@ export default function TicketBoard() {
           <ActionForm
             primary
             submit="Create ticket"
-            initial={{ serial_no: params.get('serial') || '' }}
+            initial={{ serial_no: params.get('serial') || '', assigned_to_id: mine ? currentUser.id : undefined }}
             fields={[
               { name: 'serial_no', label: 'Equipment serial number', maxLength: 100 },
               { name: 'fault_code', label: 'Issue category', options: ['NO_POWER', 'LOW_GENERATION', 'INVERTER_FAULT', 'BATTERY_FAULT', 'WIRING', 'MONITORING', 'OTHER'] },
               { name: 'description', label: 'Issue description', type: 'textarea', maxLength: 2000 },
               { name: 'priority', label: 'Priority', options: priorities, value: 'NORMAL' },
+              { name: 'assigned_to_id', label: 'Assigned staff', lookup: 'assignees', optional: true, hint: 'Choose who owns this repair, or leave it unassigned.' },
             ]}
             action={(v) => api.post('/tickets', v)}
             onDone={(t) => {
@@ -192,6 +194,7 @@ export default function TicketBoard() {
       )}
       {params.get('ticket') && (
         <TicketDetail
+          key={params.get('ticket')}
           id={params.get('ticket')}
           onClose={() => set({ ticket: null })}
           onChange={() => setRevision((v) => v + 1)}

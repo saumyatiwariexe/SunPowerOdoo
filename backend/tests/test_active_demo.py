@@ -59,6 +59,30 @@ def test_active_work_is_assigned_and_lookup_ticket_chain_works():
         found = client.get('/api/v1/lookup/search?q=Manpreet&assigned_only=true').json()['data']
         assert found and found[0]['customer_name'] == 'Manpreet Kaur'
         serial = found[0]['serial_no']
+        support_queue = client.get('/api/v1/tickets?mine=true').json()
+        assert support_queue['meta']['total'] == 3
+        assert all(t['assigned_to_id'] == users['SUPPORT'] for t in support_queue['data'])
+        login('DIRECTOR')
+        assert client.get('/api/v1/tickets?mine=true').json()['meta']['total'] == 0
+        options = client.get('/api/v1/auth/assignment-options').json()['data']
+        assert users['DIRECTOR'] in [u['id'] for u in options]
+        owned = client.post('/api/v1/tickets', json={'serial_no': serial, 'fault_code': 'MONITORING', 'description': 'Director owned repair', 'assigned_to_id': users['DIRECTOR']})
+        assert owned.status_code == 201
+        owned_id = owned.json()['data']['id']
+        assert owned.json()['data']['assigned_to_name']
+        queue = client.get('/api/v1/tickets', params={'mine': 'true', 'assigned_to_id': users['SUPPORT'], 'status': 'OPEN'}).json()
+        assert [t['id'] for t in queue['data']] == [owned_id]
+        moved = client.patch(f'/api/v1/tickets/{owned_id}', json={'assigned_to_id': users['SUPPORT']})
+        assert moved.status_code == 200 and moved.json()['data']['assigned_to_name'] != owned.json()['data']['assigned_to_name']
+        assert client.get('/api/v1/tickets?mine=true').json()['meta']['total'] == 0
+        login('SUPPORT')
+        assert client.get('/api/v1/tickets?mine=true').json()['meta']['total'] == 4
+        assert client.patch(f'/api/v1/tickets/{owned_id}', json={'assigned_to_id': None}).status_code == 200
+        assert client.get('/api/v1/tickets?mine=true').json()['meta']['total'] == 3
+        total = client.get('/api/v1/tickets').json()['meta']['total']
+        invalid = client.post('/api/v1/tickets', json={'serial_no': serial, 'fault_code': 'MONITORING', 'description': 'Invalid assignee', 'assigned_to_id': users['SALES']})
+        assert invalid.status_code == 409
+        assert client.get('/api/v1/tickets').json()['meta']['total'] == total
         assert client.get('/api/v1/lookup', params={'serial': serial.lower()}).status_code == 200
         assert client.get('/api/v1/lookup', params={'phone': '+91 9888800015'}).json()['data']
         created = client.post('/api/v1/tickets', json={'serial_no': serial, 'fault_code': 'MONITORING', 'description': 'Monitoring app cannot connect'})
