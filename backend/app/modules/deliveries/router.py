@@ -39,6 +39,17 @@ def post_scan_serial(
     return {"data": data}
 
 
+@router.post("/{delivery_id}/auto-fill")
+def post_auto_fill(
+    delivery_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles("WAREHOUSE", "DIRECTOR")),
+):
+    data = service.auto_fill_serials(db, delivery_id, user.id)
+    db.commit()
+    return {"data": data}
+
+
 @router.delete("/{delivery_id}/scan/{serial_unit_id}")
 def delete_scan_serial(
     delivery_id: int,
