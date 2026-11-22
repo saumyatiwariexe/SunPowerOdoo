@@ -83,14 +83,14 @@ function CustomerLogin({ onDone }) {
       onDone()
     } catch (err) { setError(err.details?.[0]?.message || err.message) } finally { setBusy(false) }
   }
-  return <section className="customer-login"><h2>Welcome back</h2><p>Sign in with the email your SunPower agent used to invite you.</p>
+  return <section className="customer-login"><h2>Welcome back</h2><p>Use the email and password sent by your SunPower agent.</p>
     <form className="stack" onSubmit={submit}>
       <Field label="Email"><input name="email" type="email" autoComplete="username" required maxLength={254} /></Field>
       <Field label="Password"><input name="password" type="password" autoComplete="current-password" required maxLength={72} /></Field>
       {error && <p className="form-error" role="alert">{error}</p>}
       <button className="button primary" disabled={busy}>{busy ? 'Signing in...' : 'Sign in'}</button>
     </form>
-    <p>New customer? Your agent will send an invitation after discussing your enquiry. Open that email to set your password.</p>
+    <p>New customer? Your agent will email your login details after discussing your enquiry. Sign in within 24 hours; no password setup is needed. If the initial login has expired, ask your agent to resend it.</p>
     <p>Need help with access? Contact your SunPower agent.</p>
   </section>
 }

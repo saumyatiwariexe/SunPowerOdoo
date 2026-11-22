@@ -1,4 +1,5 @@
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 from fastapi import APIRouter, Cookie, Depends, Request, Response
 from sqlalchemy.orm import Session
 from app.core.config import Settings, get_settings
@@ -40,21 +41,24 @@ def cookie(response, account, settings):
 
 
 @staff_router.get("/leads/{lead_id}")
-def account_status(lead_id: int, db: Db, actor: Agent):
+def account_status(lead_id: int, db: Db, actor: Agent, settings: Config):
     _, account = auth.lead_account(db, lead_id)
-    return {"data": auth.account_status(account)}
+    origin = settings.customer_portal_url or ""
+    return {"data": {**auth.account_status(account),
+                     "login_url": origin.rstrip("/") + "/customer" if origin else None,
+                     "local_only": urlsplit(origin).hostname in ("localhost", "127.0.0.1", "::1")}}
 
 
 @staff_router.post("/leads/{lead_id}/invite")
 def invite(lead_id: int, payload: InviteRequest, db: Db, actor: Agent, settings: Config, request: Request):
     limit(request, "invite", str(actor.id))
     auth.email_config(settings)
-    account, token = auth.invite(db, lead_id, payload.email, actor.id)
+    account, password = auth.invite(db, lead_id, payload.email, actor.id)
     data = auth.account_status(account)
-    # Persist the token hash before sending; a failed send can safely be retried.
+    # Persist only the password hash before sending; a failed send can be retried.
     db.commit()
-    auth.send_invite(settings, payload.email, token)
-    return {"data": {**data, "message": "Invitation accepted by SendGrid. Ask the customer to check their inbox."}}
+    auth.send_invite(settings, payload.email, password)
+    return {"data": {**data, "message": "Login details accepted by SendGrid. Ask the customer to check their inbox."}}
 
 
 @router.post("/auth/activate")
@@ -70,6 +74,7 @@ def activate(payload: ActivateRequest, db: Db, request: Request, response: Respo
 def login(payload: CustomerLogin, db: Db, request: Request, response: Response, settings: Config):
     limit(request, "login", payload.email)
     account = auth.authenticate(db, payload.email, payload.password)
+    db.commit()
     cookie(response, account, settings)
     return {"data": {"email": account.email}}
 
