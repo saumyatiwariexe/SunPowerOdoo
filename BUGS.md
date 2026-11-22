@@ -119,3 +119,22 @@ information with Start installation, and populated serial lookup results.
 8. Risk: this pass did not manually exercise every role on every mobile screen.
 9. Risk: old bulk history remains synthetic; use the named active projects for the demo.
 10. Risk: rehearsal advances state; the additive command preserves progress rather than resetting it.
+
+## Ticket assignment repair — 22 November 2026
+
+| ID | Severity | Module / owner | Reproduction | Status | Commit |
+| --- | --- | --- | --- | --- | --- |
+| TICKET-ASSIGN-01 | P1 | Tickets / C, Users / A | Director opens Assigned to me, but cannot be selected as ticket owner. Creating tickets offers no assignment. | fixed: director eligibility, assignment on create, Assign to me action | 34dba37 |
+| TICKET-ASSIGN-02 | P2 | Tickets / C | Reassign a ticket and inspect PATCH response: assignee name still describes previous owner. | fixed: refresh descriptive fields after mutation | 34dba37 |
+| TICKET-ASSIGN-03 | P2 | Tickets UI / C | Search prompts only for ticket number; an empty personal queue offers no explanation. | fixed: customer/serial/issue search label, personal queue guidance, server-authenticated mine filter | 34dba37 |
+
+Verified the live support personal queue returns three owned tickets and director
+returns zero (existing tickets were not reassigned). Isolated regressions verify
+assignment during creation, director ownership, authenticated personal filtering,
+reassignment, unassignment, updated names and rollback on invalid assignment.
+The full suite initially passed 49/50; the remaining test asserted the old
+crew/support-only eligibility. Its expectation now explicitly includes directors
+and additionally verifies crew-only filtering. All 19 affected regression tests
+then passed; the production frontend build passed. Native browser automation was
+unavailable following the previous turn's URL-confidence stop; this ticket repair
+was verified through API tests and the live read-only queue checks.
