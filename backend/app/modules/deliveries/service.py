@@ -7,6 +7,7 @@ from app.modules.catalog.service import adjust_stock
 from app.modules.deliveries.models import Delivery, DeliveryLine, DeliveryScan
 from app.modules.inventory.models import SerialUnit, StockMovement
 from app.modules.orders.models import Order
+from app.modules.users.models import Customer
 from app.modules.orders.service import mark_dispatched
 from app.modules.quotes.models import QuoteLine
 from app.modules.warranty import service as warranty_service
@@ -50,13 +51,17 @@ def list_deliveries(db: Session, status: str | None = None) -> list[dict]:
         stmt = stmt.where(Delivery.status == status)
     deliveries = db.scalars(stmt).all()
 
+    customer_ids = [order.customer_id for order in db.scalars(select(Order).where(Order.id.in_([d.order_id for d in deliveries])))]
+    customers = {r.id: r for r in db.scalars(select(Customer).where(Customer.id.in_(customer_ids)))}
+    orders = {r.id: r for r in db.scalars(select(Order).where(Order.id.in_([d.order_id for d in deliveries])))}
     out = []
     for d in deliveries:
-        order = db.scalar(select(Order).where(Order.id == d.order_id))
+        order = orders.get(d.order_id)
         out.append({
             "id": d.id,
             "order_id": d.order_id,
             "order_number": order.number if order else None,
+            "customer_name": customers[order.customer_id].name if order and order.customer_id in customers else None,
             "status": d.status,
             "vehicle": d.vehicle,
             "dispatched_at": d.dispatched_at,
@@ -108,6 +113,9 @@ def get_delivery_detail(db: Session, delivery_id: int) -> dict:
         "id": delivery.id,
         "order_id": delivery.order_id,
         "order_number": order.number if order else None,
+      "customer": ({"id": customer.id, "name": customer.name, "phone": customer.phone,
+                    "address": customer.address, "city": customer.city, "pincode": customer.pincode}
+                   if order and (customer := db.get(Customer, order.customer_id)) else None),
         "status": delivery.status,
         "vehicle": delivery.vehicle,
         "dispatched_at": delivery.dispatched_at,

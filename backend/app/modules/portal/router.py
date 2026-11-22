@@ -9,7 +9,7 @@ from app.core.errors import AppError
 from app.modules.users.models import User
 from . import auth, service
 from .models import CustomerAccount
-from .schemas import ActivateRequest, CustomerLogin, InviteRequest, ServiceRequest
+from .schemas import ActivateRequest, CustomerLogin, InviteRequest, ServiceRequest, AcceptQuote, PaymentReportRequest, PaymentReview
 
 router = APIRouter(prefix="/customer", tags=["customer portal"])
 staff_router = APIRouter(prefix="/customer-management", tags=["customer onboarding"])
@@ -100,5 +100,37 @@ def document(kind: Literal["quotes", "invoices"], record_id: int, db: Db, accoun
 @router.post("/tickets", status_code=201)
 def request_service(payload: ServiceRequest, db: Db, account: Account):
     data = service.request_service(db, account.customer_id, payload)
+    db.commit()
+    return {"data": data}
+
+
+@router.post("/quotes/{quote_id}/accept")
+def accept_quote(quote_id: int, payload: AcceptQuote, db: Db, account: Account):
+    data = service.accept_quote(db, account.customer_id, quote_id)
+    db.commit()
+    return {"data": data}
+
+
+@router.get("/{kind}/{target_id}/payment-reports")
+def customer_payments(kind: Literal["orders", "invoices"], target_id: int, db: Db, account: Account, response: Response):
+    response.headers["Cache-Control"] = "private, no-store"
+    return {"data": service.payment_summary(db, kind, target_id, account.customer_id)}
+
+
+@router.post("/{kind}/{target_id}/payment-reports", status_code=201)
+def report_payment(kind: Literal["orders", "invoices"], target_id: int, payload: PaymentReportRequest, db: Db, account: Account):
+    data = service.report_payment(db, account.customer_id, kind, target_id, payload)
+    db.commit()
+    return {"data": data}
+
+
+@staff_router.get("/{kind}/{target_id}/payment-reports")
+def staff_payments(kind: Literal["orders", "invoices"], target_id: int, db: Db, actor: Agent):
+    return {"data": service.payment_summary(db, kind, target_id)}
+
+
+@staff_router.post("/payment-reports/{report_id}/review")
+def review_payment(report_id: int, payload: PaymentReview, db: Db, actor: Agent):
+    data = service.review_payment(db, report_id, actor.id, payload)
     db.commit()
     return {"data": data}

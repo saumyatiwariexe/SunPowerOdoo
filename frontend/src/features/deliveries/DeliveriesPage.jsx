@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../../app/api'
 import { useAuth } from '../../app/AuthContext'
 import { hasRole } from '../../app/navigation'
@@ -16,7 +17,8 @@ export function DeliveriesPage() {
       empty="Confirmed orders appear here for picking."
       columns={[
         ['id', 'Delivery', recordLink('/deliveries', 'Delivery')],
-        ['order_number', 'Order'],
+        ['customer_name', 'Customer'],
+        ['order_number', 'Order', r => <Link className="text-link" to={`/orders/${r.order_id}`}>{r.order_number}</Link>],
         ['status', 'Status'],
         ['vehicle', 'Vehicle'],
         ['delivered_at', 'Delivered'],
@@ -32,7 +34,10 @@ export function DeliveryDetail() {
         <>
           <Facts
             items={[
-              ['Order', r.order_number],
+              ['Customer', r.customer?.name],
+              ['Phone', r.customer?.phone],
+              ['Site', [r.customer?.address, r.customer?.city, r.customer?.pincode].filter(Boolean).join(', ')],
+              ['Order', <Link className="text-link" to={`/orders/${r.order_id}`}>{r.order_number}</Link>],
               ['Vehicle', r.vehicle],
             ]}
           />

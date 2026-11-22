@@ -1,4 +1,5 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 import { api, formatPaise } from '../../app/api'
 import ActionForm from '../../app/ActionForm'
 import { Facts } from '../../app/records'
@@ -12,7 +13,8 @@ export function SubsidyPage() {
       columns={[
         ['id', 'Claim', recordLink('/subsidy', 'Claim')],
         ['scheme', 'Scheme'],
-        ['order_id', 'Order ID'],
+        ['customer_name', 'Customer'],
+        ['order_number', 'Order', r => <Link className="text-link" to={`/orders/${r.order_id}`}>{r.order_number || r.order_id}</Link>],
         ['amount_paise', 'Amount'],
         ['reference_no', 'Reference'],
         ['status', 'Status'],
@@ -28,7 +30,8 @@ export function SubsidyDetail() {
           <Facts
             items={[
               ['Scheme', r.scheme],
-              ['Order ID', r.order_id],
+              ['Customer', r.customer_name],
+              ['Order', <Link className="text-link" to={`/orders/${r.order_id}`}>{r.order_number || r.order_id}</Link>],
               ['Amount', formatPaise(r.amount_paise)],
               ['Reference', r.reference_no],
               ['Notes', r.notes],
