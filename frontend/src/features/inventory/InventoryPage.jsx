@@ -50,17 +50,8 @@ export default function InventoryPage() {
           { name: 'product_id', label: 'Product', lookup: 'products' },
           { name: 'qty', label: 'Quantity', type: 'number', min: 1 },
           { name: 'purchase_cost_paise', label: 'Unit purchase cost (₹)', type: 'money' },
-          { name: 'serials', label: 'Manufacturer serials (optional, one per line)', type: 'textarea', optional: true,
-            hint: 'Leave blank to generate SunPower asset serials automatically. Enter printed serials when available for warranty lookup.' },
         ],
-        action: ({ serials, ...v }) =>
-          api.post('/stock/receive', {
-            ...v,
-            serial_numbers: (serials || '')
-              .split(/\r?\n/)
-              .map((x) => x.trim())
-              .filter(Boolean),
-          }),
+        action: (v) => api.post('/stock/receive', v),
         onDone: result => {
           setReceipt(result)
           setSearch('')

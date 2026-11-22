@@ -169,6 +169,34 @@ def scan_serial(db: Session, delivery_id: int, serial_no: str, user_id: int) -> 
     return get_delivery_detail(db, delivery.id)
 
 
+def auto_fill_serials(db: Session, delivery_id: int, user_id: int) -> dict:
+    """Reserve available units for each serialized pick-list line once."""
+    delivery = db.scalar(select(Delivery).where(Delivery.id == delivery_id).with_for_update())
+    if delivery is None:
+        raise AppError("NOT_FOUND", "Delivery not found", 404)
+    if delivery.status != "PENDING":
+        raise AppError("RULE_VIOLATION", "Only pending deliveries can be packed", 409)
+    lines = db.scalars(select(DeliveryLine).where(DeliveryLine.delivery_id == delivery_id)
+                       .order_by(DeliveryLine.id).with_for_update()).all()
+    for line in lines:
+        product = db.get(Product, line.product_id)
+        if not product or not product.tracks_serial or line.qty_packed >= line.qty_required:
+            continue
+        candidates = db.scalars(select(SerialUnit).where(
+            SerialUnit.product_id == line.product_id,
+            SerialUnit.status == "IN_STOCK", SerialUnit.delivery_id.is_(None),
+            SerialUnit.id.not_in(select(DeliveryScan.serial_unit_id)),
+        ).order_by(SerialUnit.id).limit(line.qty_required - line.qty_packed)
+          .with_for_update(skip_locked=True)).all()
+        for unit in candidates:
+            unit.delivery_id = delivery_id
+            line.qty_packed += 1
+            db.add(DeliveryScan(delivery_id=delivery_id, serial_unit_id=unit.id,
+                                scanned_by_id=user_id, scanned_at=datetime.now(timezone.utc)))
+        db.flush()
+    return get_delivery_detail(db, delivery_id)
+
+
 def unscan_serial(db: Session, delivery_id: int, serial_unit_id: int) -> dict:
     delivery = db.scalar(select(Delivery).where(Delivery.id == delivery_id).with_for_update())
     if not delivery:

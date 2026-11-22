@@ -1,5 +1,3 @@
-from secrets import token_hex
-
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -59,7 +57,12 @@ def receive_stock(db: Session, payload: StockReceiveIn) -> dict:
 
     if product.tracks_serial:
         if not cleaned_serials:
-            cleaned_serials = [f"SP-{product.id:05d}-{token_hex(6).upper()}" for _ in range(payload.qty)]
+            prefix = f"SP-{product.id:05d}-"
+            previous = db.scalars(select(SerialUnit.serial_no).where(
+                SerialUnit.product_id == product.id, SerialUnit.serial_no.like(prefix + "%")))
+            last = max((int(number[len(prefix):]) for number in previous
+                        if number.startswith(prefix) and number[len(prefix):].isdigit()), default=0)
+            cleaned_serials = [f"{prefix}{last + offset:06d}" for offset in range(1, payload.qty + 1)]
         if len(cleaned_serials) != payload.qty:
             raise AppError(
                 "RULE_VIOLATION",

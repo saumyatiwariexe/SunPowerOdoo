@@ -695,7 +695,7 @@ def test_serial_tracked_receipts_generate_unique_searchable_asset_numbers(worksp
     assert first.status_code == second.status_code == 200
     numbers = first.json()['data']['serial_numbers'] + second.json()['data']['serial_numbers']
     assert len(set(numbers)) == 4
-    assert all(number.startswith(f'SP-{product_id:05d}-') for number in numbers)
+    assert numbers == [f'SP-{product_id:05d}-{i:06d}' for i in range(1, 5)]
     listed = stage.client.get(f'{API}/stock/serials', params={'product_id': product_id})
     assert listed.status_code == 200
     assert set(numbers).issubset({r['serial_no'] for r in listed.json()['data']})
@@ -710,3 +710,37 @@ def test_serial_tracked_receipts_generate_unique_searchable_asset_numbers(worksp
     assert manual.json()['data']['serial_numbers'] == ['MANUFACTURER-001']
     partial = stage.client.post(f'{API}/stock/receive', json={**payload, 'serial_numbers': ['ONLY-ONE']})
     assert partial.status_code == 409
+
+
+def test_delivery_auto_fill_assigns_serials_once_without_manual_selection(workspace):
+    from app.modules.catalog.models import Product
+    from app.modules.quotes.models import QuoteLine
+    stage = workspace
+    order_id = add_order(stage, 'QT-AUTO-SERIAL')
+    with Session(stage.engine) as db:
+        order = db.get(Order, order_id)
+        panel = db.scalar(select(Product).where(Product.sku == 'PANEL-500'))
+        db.add(QuoteLine(quote_id=order.quote_id, product_id=panel.id,
+                         description='Panel', qty=2, unit_price_paise=50, line_paise=100))
+        db.commit()
+    record_advance(stage, order_id, 31)
+    assert stage.client.post(f'{API}/orders/{order_id}/confirm').status_code == 200
+    stage.state.actor = stage.actors['warehouse']
+    delivery = next(r for r in stage.client.get(f'{API}/deliveries').json()['data'] if r['order_id'] == order_id)
+    path = f"{API}/deliveries/{delivery['id']}"
+    before = stage.client.post(path + '/auto-fill').json()['data']
+    assert all(not line['scanned_serials'] for line in before['lines'] if line['tracks_serial'])
+    for line in before['lines']:
+        if line['tracks_serial']:
+            receipt = stage.client.post(f'{API}/stock/receive', json={
+                'product_id': line['product_id'], 'qty': line['qty_required'], 'purchase_cost_paise': 100})
+            assert receipt.status_code == 200
+    filled = stage.client.post(path + '/auto-fill')
+    assert filled.status_code == 200
+    serials = [s['serial_no'] for line in filled.json()['data']['lines'] for s in line['scanned_serials']]
+    assert serials
+    assert all(line['qty_packed'] == line['qty_required'] for line in filled.json()['data']['lines'] if line['tracks_serial'])
+    repeated = stage.client.post(path + '/auto-fill')
+    assert repeated.status_code == 200
+    again = [s['serial_no'] for line in repeated.json()['data']['lines'] for s in line['scanned_serials']]
+    assert again == serials

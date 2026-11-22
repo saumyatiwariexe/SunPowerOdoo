@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../../app/api'
 import { useAuth } from '../../app/AuthContext'
@@ -56,29 +56,13 @@ export function DeliveryDetail() {
                     ? <span>{ln.scanned_serials.length} / {ln.qty_required}{ln.scanned_serials.length > 0 && <small className="record-selected">{ln.scanned_serials.map(scan => scan.serial_no).join(', ')}</small>}</span>
                     : 'Quantity only',
               ],
-              ['pick', 'Pick', ln => r.status === 'PENDING' && ln.tracks_serial && ln.scanned_serials.length < ln.qty_required && (hasRole(currentUser, 'WAREHOUSE') || hasRole(currentUser, 'DIRECTOR'))
-                ? <AutoPickButton serial={ln.available_serials?.[0]} product={ln.product_name} path={path} reload={reload} /> : null],
             ]}
           />
           {r.status === 'PENDING' && (hasRole(currentUser, 'WAREHOUSE') || hasRole(currentUser, 'DIRECTOR')) && (
             <>
-              <p className="section-help">Use “Pick next available” beside an item to assign its serial automatically. Scan a physical serial below when you need a specific unit.</p>
-              <ActionForm
-                submit="Scan serial"
-                fields={[{ name: 'serial_no', label: 'Serial number' }]}
-                action={(v) => api.post(path + '/scan', v)}
-                onDone={reload}
-              />
-              {r.lines
-                .flatMap((line) => line.scanned_serials)
-                .map((s) => (
-                  <ActionForm
-                    key={s.serial_unit_id}
-                    submit={'Remove ' + s.serial_no}
-                    action={() => api.del(path + '/scan/' + s.serial_unit_id)}
-                    onDone={reload}
-                  />
-                ))}
+              <AutoFillOnOpen key={path} path={path} reload={reload} />
+              {r.lines.some(line => line.tracks_serial && line.scanned_serials.length < line.qty_required) &&
+                <p className="section-help">Any remaining serials will be assigned automatically when matching stock is received and this delivery is reopened.</p>}
               {r.lines.every((l) => !l.tracks_serial || l.scanned_serials.length === l.qty_required) && (
                 <ActionForm
                   primary
@@ -104,16 +88,18 @@ export function DeliveryDetail() {
   )
 }
 
-function AutoPickButton({ serial, product, path, reload }) {
+function AutoFillOnOpen({ path, reload }) {
+  const started = useRef(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  async function pick() {
+  async function fill() {
     setBusy(true); setError('')
-    try { await api.post(path + '/scan', { serial_no: serial }); reload() }
+    try { await api.post(path + '/auto-fill', {}); reload() }
     catch (err) { setError(err.message) } finally { setBusy(false) }
   }
-  return <span><button type="button" className="button" disabled={!serial || busy} onClick={pick}>{busy ? 'Picking…' : 'Pick next available'}</button>
-    {!serial && <small role="status">No available {product} serials</small>}
-    {error && <small role="alert" className="form-error">{error}</small>}
-  </span>
+  useEffect(() => { if (!started.current) { started.current = true; fill() } }, [path])
+  return <p role={error ? 'alert' : 'status'} className={error ? 'form-error' : 'section-help'}>
+    {error ? <>Automatic assignment failed: {error} <button type="button" className="text-link" onClick={fill}>Retry</button></>
+      : busy ? 'Assigning available serials…' : 'Available serials have been assigned.'}
+  </p>
 }
