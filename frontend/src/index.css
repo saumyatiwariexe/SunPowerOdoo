@@ -1532,3 +1532,74 @@ details[open] > summary {
 .customer-onboarding { margin-block: 28px; padding: 22px; border: 1px solid var(--line); border-radius: 10px; background: white; }
 .customer-onboarding > p { margin-block: 12px; }
 .customer-onboarding form { max-width: 520px; }
+
+/* Operational editors: shared form hierarchy, responsive fields and action footers. */
+@media screen {
+  .workspace-main { --editor-line: #e8e2e7; }
+  .workspace-main .heading h1 { font-size: clamp(1.7rem, 2.5vw, 2.2rem); letter-spacing: -.035em; }
+  .workspace-main > .heading { align-items: center; border-bottom: 0; padding-bottom: 0; margin-bottom: 24px; }
+  .workspace-main .back { display: inline-flex; margin-bottom: 18px; font-weight: 500; color: var(--muted); }
+  .workspace-main .detail-stack { margin-top: 0; gap: 24px; }
+  .workspace-main .facts { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); padding: 24px; gap: 24px 32px; border: 1px solid var(--line); border-radius: 12px; background: white; }
+  .workspace-main .facts dt { font-size: .78rem; font-weight: 500; }
+  .workspace-main .facts dd { margin-top: 7px; font-size: .94rem; line-height: 1.55; font-weight: 600; }
+  .action-form.form-editor { max-width: none; width: 100%; display: block; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: white; overflow: hidden; }
+  .form-heading { padding: 22px 24px 18px; border-bottom: 1px solid var(--line); }
+  .form-heading h3 { font-size: 1.05rem; font-weight: 650; letter-spacing: -.015em; }
+  .form-heading p { margin-top: 6px; color: var(--muted); font-size: .8rem; line-height: 1.5; }
+  .form-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 24px; padding: 24px; }
+  .form-fields .field-wide, .form-fields .permission-field { grid-column: 1 / -1; }
+  .form-fields > .field:only-child { grid-column: 1 / -1; }
+  .form-fields .field { gap: 8px; }
+  .form-fields .field > label { font-size: .82rem; font-weight: 600; }
+  .form-fields :is(input:not([type=checkbox]):not([type=radio]), select, textarea) { width: 100%; min-height: 46px; padding: 11px 13px; border: 1px solid #d6cdd4; border-radius: 8px; background: #fcfbfc; font: inherit; font-size: .9rem; color: var(--ink); caret-color: var(--pine); transition: border-color .15s, background .15s; }
+  .form-fields textarea { min-height: 110px; resize: vertical; line-height: 1.6; }
+  .form-fields :is(input, select, textarea):hover { border-color: #a896a3; }
+  .form-fields :is(input, select, textarea):focus-visible { background: white; border-color: var(--pine); outline: 2px solid var(--pine); outline-offset: 2px; }
+  .form-fields :is(input, select, textarea)[aria-invalid=true] { border-color: #b42318; background: #fff9f8; }
+  .form-fields input[type=file] { padding: 10px; border-style: dashed; background: #f8f5f7; }
+  .form-fields input::file-selector-button { border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; margin-right: 12px; background: white; color: var(--pine); font: inherit; font-weight: 600; cursor: pointer; }
+  .form-actions { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 24px; background: #faf8fa; border-top: 1px solid var(--line); }
+  .form-actions > span { color: var(--muted); font-size: .76rem; line-height: 1.5; }
+  .form-actions .button { min-height: 44px; border-radius: 8px; padding-inline: 20px; flex-shrink: 0; }
+  .form-editor > .form-error { margin: 0 24px 20px; padding: 12px 14px; background: #fff1ee; border-radius: 8px; }
+  .action-form.form-action { max-width: none; padding: 0; border: 0; background: transparent; }
+  .form-action .form-fields { display: none; }
+  .form-action .form-actions { padding: 0; border: 0; background: transparent; justify-content: flex-start; }
+  .workspace-main details { border-radius: 12px; padding: 20px 24px; }
+  .workspace-main details > summary { color: var(--ink); font-size: .95rem; }
+  .workspace-main details[open] > summary { padding-bottom: 18px; margin-bottom: 0; }
+  .workspace-main details .form-editor, .dialog .form-editor { border: 0; border-radius: 0; }
+  .workspace-main details .form-heading { padding-inline: 0; }
+  .workspace-main details .form-fields { padding-inline: 0; }
+  .dialog { width: min(720px, calc(100% - 28px)); border-radius: 16px; }
+  .dialog > header { padding: 22px 24px; background: white; }
+  .dialog-body:has(> .form-editor) { padding: 0; }
+  .dialog .form-heading h3 { display: none; }
+  .dialog .form-heading { border: 0; padding-bottom: 0; padding-top: 16px; }
+  .dialog .form-heading p { margin-top: 0; }
+  .workspace-main .data-table th { background: #faf8fa; font-size: .74rem; font-weight: 600; color: var(--muted); }
+  .workspace-main .data-table tbody tr:nth-child(even) { background: white; }
+  .workspace-main .data-table tbody tr:hover { background: #f8f4f7; }
+  .workspace-main .data-table td { font-size: .87rem; padding-block: 18px; }
+  .workspace-main .collection-summary { padding-block: 20px; }
+  .workspace-main .collection-summary > span { background: #f2eaf0; color: var(--pine); border-radius: 6px; padding: 4px 9px; font-weight: 600; }
+}
+@media screen and (max-width: 600px) {
+  .form-fields { grid-template-columns: minmax(0, 1fr); padding: 20px 16px; gap: 20px; }
+  .form-heading { padding: 20px 16px 16px; }
+  .form-actions { align-items: stretch; flex-direction: column; padding: 16px; gap: 12px; }
+  .form-actions .button { width: 100%; }
+  .form-fields :is(input:not([type=checkbox]):not([type=radio]), select, textarea) { font-size: 16px; }
+  .workspace-main .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 18px; gap: 22px 18px; }
+  .workspace-main details { padding: 18px 16px; }
+  .dialog > header { padding: 18px 16px; }
+  .form-editor > .form-error { margin-inline: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .form-fields :is(input, select, textarea) { transition: none; }
+}
+@media screen {
+  .form-editor:has(.form-fields > .field:only-child) > .form-heading { display: none; }
+  .heading > .status { flex-shrink: 0; }
+}

@@ -58,14 +58,13 @@ export function RecordDetail({ title, base, singular, children, print = false, b
       <State resource={result}>
         {result.data && (
           <>
-            <Heading title={result.data.number || singular + ' #' + id}>
+            <Heading title={result.data.number || singular + ' #' + id} status={result.data.status}>
               {print && (
                 <button className="button" onClick={() => window.print()}>
                   Print {singular.toLowerCase()}
                 </button>
               )}
             </Heading>
-            {result.data.status && <Status value={result.data.status} />}
             <div className="detail-stack">{children(result.data, path, result.reload)}</div>
           </>
         )}

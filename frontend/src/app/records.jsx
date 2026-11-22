@@ -45,10 +45,11 @@ export function State({ resource, children }) {
     )
   return children
 }
-export function Heading({ title, children }) {
+export function Heading({ title, status, children }) {
   return (
     <header className="heading">
       <h1>{title}</h1>
+      {status && <Status value={status} />}
       <div className="actions no-print">{children}</div>
     </header>
   )

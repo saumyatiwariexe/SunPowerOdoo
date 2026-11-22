@@ -18,6 +18,8 @@ export default function ActionForm({
   onDone,
   initial = {},
   primary = false,
+  title,
+  description,
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -61,7 +63,12 @@ export default function ActionForm({
     }
   }
   return (
-    <form className="action-form no-print" onSubmit={save}>
+    <form className={`action-form no-print ${fields.length ? 'form-editor' : 'form-action'}`} onSubmit={save} aria-label={title || submit}>
+      {fields.length > 0 && <header className="form-heading">
+        <h3>{title || submit}</h3>
+        <p>{description || 'Fields marked * are required.'}</p>
+      </header>}
+      <div className="form-fields">
       {fields.map((f) => {
         if (f.checkboxes) return (
           <fieldset className="field permission-field" key={f.name} disabled={busy}>
@@ -85,7 +92,7 @@ export default function ActionForm({
           disabled: busy,
         }
         return (
-          <Field key={f.name} label={f.label} error={errors[f.name]}>
+          <Field key={f.name} label={f.label} required={!f.optional} hint={f.hint} error={errors[f.name]} className={['textarea', 'file'].includes(f.type) || f.multiple || f.lookup || f.record ? 'field-wide' : ''}>
             {f.lookup || f.record ? (
               <RecordSelect field={f} initial={initial[f.name] ?? f.value} busy={busy} onAvailability={onAvailability} />
             ) : f.options ? (
@@ -108,19 +115,24 @@ export default function ActionForm({
                 min={f.min ?? (f.type === 'money' ? 0 : undefined)}
                 max={f.max}
                 accept={f.accept}
+                placeholder={f.placeholder}
               />
             )}
           </Field>
         )
       })}
+      </div>
       {error && (
         <p className="form-error" role="alert">
           {error}
         </p>
       )}
-      <button className={primary ? 'button primary' : 'button'} disabled={busy || loadingChoices}>
+      <footer className="form-actions">
+      {fields.length > 0 && <span>{loadingChoices ? 'Loading available choices…' : 'Review your details before saving.'}</span>}
+      <button className={primary || fields.length ? 'button primary' : 'button'} disabled={busy || loadingChoices}>
         {busy ? 'Saving…' : submit}
       </button>
+      </footer>
     </form>
   )
 }
