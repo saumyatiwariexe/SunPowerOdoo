@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useRef } from 'react'
-export default function Modal({ title, children, onClose }) {
+export default function Modal({ title, children, onClose, className = '' }) {
   const ref = useRef(null)
   const id = useId()
   useEffect(() => {
@@ -10,7 +10,7 @@ export default function Modal({ title, children, onClose }) {
   return (
     <dialog
       ref={ref}
-      className="dialog"
+      className={'dialog ' + className}
       aria-labelledby={id}
       onCancel={(event) => {
         event.preventDefault()

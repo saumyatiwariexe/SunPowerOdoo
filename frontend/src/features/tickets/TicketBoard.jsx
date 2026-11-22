@@ -17,6 +17,7 @@ function Queue({ status, query, board, openTicket }) {
   const params = new URLSearchParams(query)
   if (status) params.set('status', status)
   params.set('page', page)
+  params.set('page_size', board ? '6' : '12')
   const resource = useRecord('/tickets?' + params)
   const rows = resource.data || []
   if (!board)
@@ -35,8 +36,7 @@ function Queue({ status, query, board, openTicket }) {
                 </button>
               ),
             ],
-            ['customer_name', 'Customer'], ['serial_no', 'Equipment serial'],
-            ['description', 'Description'],
+            ['description', 'Issue', t => <div className="ticket-list-issue"><strong>{t.description}</strong><small>{t.customer_name}</small></div>],
             ['priority', 'Priority', (t) => human(t.priority)],
             ['status', 'Status'],
             ['assigned_to_id', 'Assignee', (t) => assignee(t)],
@@ -80,7 +80,8 @@ export default function TicketBoard() {
   const [params, setParams] = useSearchParams()
   const [revision, setRevision] = useState(0)
   const [search, setSearch] = useState(params.get('q') || '')
-  const board = params.get('view') !== 'list'
+  const board = params.get('view') === 'board'
+  const selectedStatus = stages.includes(params.get('status')) ? params.get('status') : params.get('status') === 'ALL' ? '' : 'OPEN'
   const mine = params.get('mine') === '1'
   function set(values, replace = false) {
     const next = new URLSearchParams(params)
@@ -92,7 +93,7 @@ export default function TicketBoard() {
   if (mine) query.set('mine', 'true')
   const openTicket = (id) => set({ ticket: id, new: null, serial: null })
   return (
-    <>
+    <div className="ticket-workspace">
       <Heading title="Service tickets">
         <Link to="/lookup" className="button">
           <AppIcon name="search" size={16} />
@@ -102,22 +103,7 @@ export default function TicketBoard() {
           ＋ Create ticket
         </button>
       </Heading>
-      <div className="view-tabs">
-        {[
-          ['board', 'board', 'Board'],
-          ['list', 'list', 'List'],
-        ].map(([mode, icon, label]) => (
-          <button
-            key={mode}
-            aria-pressed={(board ? 'board' : 'list') === mode}
-            onClick={() => set({ view: mode })}
-          >
-            <AppIcon name={icon} size={16} />
-            {label}
-          </button>
-        ))}
-      </div>
-      <div className="tools">
+      <div className="ticket-toolbar">
         <form
           className="search-box"
           role="search"
@@ -144,6 +130,25 @@ export default function TicketBoard() {
           <AppIcon name="people" size={16} />
           Assigned to me
         </button>
+        {!board && <select aria-label="Ticket status" value={selectedStatus || 'ALL'} onChange={e => set({ status: e.target.value })}>
+          {stages.map(status => <option key={status} value={status}>{human(status)}</option>)}
+          <option value="ALL">All statuses</option>
+        </select>}
+      <div className="view-tabs ticket-view-switch">
+        {[
+          ['board', 'board', 'Board'],
+          ['list', 'list', 'Queue'],
+        ].map(([mode, icon, label]) => (
+          <button
+            key={mode}
+            aria-pressed={(board ? 'board' : 'list') === mode}
+            onClick={() => set({ view: mode })}
+          >
+            <AppIcon name={icon} size={16} />
+            {label}
+          </button>
+        ))}
+      </div>
         {params.get('q') && (
           <button
             className="text-link"
@@ -156,9 +161,9 @@ export default function TicketBoard() {
           </button>
         )}
       </div>
-      {mine && <p className="section-help" role="status">Showing tickets assigned to {currentUser.name}. Creating a ticket does not assign it automatically. Use “Assign to me” inside a ticket or select yourself when creating one.</p>}
-      <div className={board ? 'board' : ''}>
-        {(board ? stages : ['']).map((status) => (
+      {mine && <p className="ticket-filter-note" role="status">Assigned to {currentUser.name}</p>}
+      <div className={board ? 'board' : 'ticket-queue'}>
+        {(board ? stages : [selectedStatus]).map((status) => (
           <Queue
             key={[status, query, revision].join('/')}
             status={status}
@@ -200,6 +205,6 @@ export default function TicketBoard() {
           onChange={() => setRevision((v) => v + 1)}
         />
       )}
-    </>
+    </div>
   )
 }

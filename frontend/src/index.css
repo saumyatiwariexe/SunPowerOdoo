@@ -1603,3 +1603,45 @@ details[open] > summary {
   .form-editor:has(.form-fields > .field:only-child) > .form-heading { display: none; }
   .heading > .status { flex-shrink: 0; }
 }
+
+/* Service desk: focused queue and progressively disclosed ticket controls. */
+@media screen {
+  .ticket-workspace .heading { margin-bottom: 24px; }
+  .ticket-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 24px; }
+  .ticket-toolbar .search-box { flex: 1 1 260px; max-width: 420px; min-height: 44px; }
+  .ticket-toolbar .search-box input { width: 100%; min-width: 0; flex: 1; }
+  .ticket-toolbar > select, .ticket-toolbar > .filter { min-height: 44px; }
+  .ticket-view-switch { margin: 0 0 0 auto; border: 1px solid var(--line); border-radius: 8px; padding: 3px; gap: 2px; background: white; }
+  .ticket-view-switch button { min-height: 36px; padding: 8px 12px; border: 0; border-radius: 5px; font-size: .8rem; }
+  .ticket-view-switch button[aria-pressed=true] { background: var(--leaf); }
+  .ticket-filter-note { margin: -10px 0 20px; color: var(--muted); font-size: .8rem; }
+  .ticket-list-issue { display: grid; gap: 5px; max-width: 38ch; }
+  .ticket-list-issue strong { font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ticket-list-issue small { color: var(--muted); font-size: .78rem; }
+  .ticket-workspace .board { gap: 18px; grid-template-columns: repeat(4, minmax(240px, 1fr)); overflow-x: auto; padding-bottom: 12px; }
+  .ticket-workspace .lane { background: #eeeaee; border: 0; padding: 12px; min-height: 220px; }
+  .ticket-workspace .ticket-card { padding: 16px; margin-bottom: 12px; gap: 10px; }
+  .ticket-workspace .ticket-card strong { -webkit-line-clamp: 2; }
+  .ticket-workspace .ticket-meta { margin-top: 2px; }
+  .ticket-workspace .empty-lane { border: 0; text-align: left; line-height: 1.6; }
+  .ticket-dialog { width: min(760px, calc(100% - 28px)); }
+  .ticket-dialog > header { position: sticky; top: 0; z-index: 2; background: white; }
+  .ticket-dialog .issue-title { font-size: 1.2rem; line-height: 1.5; margin: 16px 0 20px; }
+  .ticket-dialog .view-tabs { margin-bottom: 24px; }
+  .ticket-dialog .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); border: 0; padding: 0; gap: 20px 28px; }
+  .ticket-dialog .facts dd { font-size: .88rem; line-height: 1.5; }
+  .ticket-dialog .stack { gap: 24px; }
+  .ticket-edit-section + .ticket-edit-section { padding-top: 24px; border-top: 1px solid var(--line); }
+  .ticket-edit-section > h3 { font-size: .95rem; margin-bottom: 12px; }
+  .ticket-dialog .form-heading, .ticket-dialog .form-actions > span { display: none; }
+  .ticket-dialog .form-fields { padding: 0 0 20px; }
+  .ticket-dialog .form-actions { background: transparent; padding: 0; border: 0; justify-content: flex-start; }
+}
+@media screen and (max-width: 600px) {
+  .ticket-toolbar { gap: 10px; }
+  .ticket-toolbar .search-box { flex-basis: 100%; max-width: none; }
+  .ticket-toolbar > .filter, .ticket-toolbar > select { flex: 1; }
+  .ticket-view-switch { margin-left: 0; }
+  .ticket-dialog .facts { gap: 18px; }
+  .ticket-workspace .board { grid-template-columns: repeat(4, 85vw); }
+}
