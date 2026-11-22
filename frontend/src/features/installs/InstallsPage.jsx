@@ -16,21 +16,22 @@ import {
 
 export function InstallsPage() {
   const { currentUser } = useAuth()
-  const [status, setStatus] = useState('SCHEDULED')
   const mine = hasRole(currentUser, 'CREW') && !hasRole(currentUser, 'SUPPORT') && !hasRole(currentUser, 'DIRECTOR')
+  const [status, setStatus] = useState(mine ? 'SCHEDULED' : 'NEEDS_SCHEDULE')
+  const query = status === 'NEEDS_SCHEDULE' ? '?needs_schedule=true' : status ? '?status=' + status : ''
   return (
     <Collection
       title={mine ? 'My installations' : 'Installations'}
       key={status}
-      path={(mine ? '/installs/mine' : '/installs') + (status ? '?status=' + status : '')}
-      tools={<label className="field">Job status<select value={status} onChange={e => setStatus(e.target.value)}><option value="">All jobs</option>{['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'ACCEPTED'].map(s => <option key={s} value={s}>{s.replaceAll('_', ' ')}</option>)}</select></label>}
+      path={(mine ? '/installs/mine' : '/installs') + query}
+      tools={<label className="field">Job status<select value={status} onChange={e => setStatus(e.target.value)}><option value="">All jobs</option>{!mine && <option value="NEEDS_SCHEDULE">Needs crew and visit time</option>}{['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'ACCEPTED'].map(s => <option key={s} value={s}>{s === 'SCHEDULED' ? 'All scheduled stage' : s.replaceAll('_', ' ')}</option>)}</select></label>}
       empty="No installation jobs yet."
       columns={[
         ['id', 'Job', recordLink('/installs', 'Job')],
         ['customer_name', 'Customer'], ['site_address', 'Site'], ['order_number', 'Order'],
         ['scheduled_start', 'Scheduled start'],
         ['crew_names', 'Crew'],
-        ['status', 'Status'],
+        ['status', 'Status', row => row.status === 'SCHEDULED' && !row.scheduled_start ? 'Needs scheduling' : row.status],
       ]}
     />
   )

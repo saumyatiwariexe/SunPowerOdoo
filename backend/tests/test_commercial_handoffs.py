@@ -744,3 +744,15 @@ def test_delivery_auto_fill_assigns_serials_once_without_manual_selection(worksp
     assert repeated.status_code == 200
     again = [s['serial_no'] for line in repeated.json()['data']['lines'] for s in line['scanned_serials']]
     assert again == serials
+
+
+def test_director_can_find_new_install_before_crew_is_assigned(workspace):
+    stage = workspace
+    job_id, _ = confirmed_job(stage, 'QT-NEEDS-CREW')
+    stage.state.actor = stage.actors['director']
+    response = stage.client.get(f'{API}/installs', params={'needs_schedule': True})
+    assert response.status_code == 200
+    assert [row['id'] for row in response.json()['data']] == [job_id]
+    assert response.json()['data'][0]['customer_name'] == 'Customer'
+    assert response.json()['data'][0]['scheduled_start'] is None
+    assert stage.client.get(f'{API}/installs/{job_id}').status_code == 200

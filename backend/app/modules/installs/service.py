@@ -42,13 +42,17 @@ def require_member(job: InstallJob, actor: User) -> None:
 
 
 def list_jobs(
-    db: Session, paging: Pagination, *, user_id: int | None = None, status: InstallStatus | None = None
+    db: Session, paging: Pagination, *, user_id: int | None = None,
+    status: InstallStatus | None = None, needs_schedule: bool = False,
 ) -> tuple[list[InstallJob], int]:
     filters = []
     if user_id is not None:
         filters.append(InstallJob.crew.any(InstallCrew.user_id == user_id))
     if status is not None:
         filters.append(InstallJob.status == status)
+    if needs_schedule:
+        filters.extend((InstallJob.status == InstallStatus.SCHEDULED,
+                        InstallJob.scheduled_start.is_(None)))
     total = db.scalar(select(func.count()).select_from(InstallJob).where(*filters)) or 0
     query = (
         select(InstallJob)
