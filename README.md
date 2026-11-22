@@ -175,4 +175,3 @@ Mehta's in-progress job. Use `surveyor@sunpower.test` for Gurpreet Singh and Mee
 Kapoor's scheduled surveys, and `support@sunpower.test` for Manpreet Kaur's tickets.
 The existing demo password remains unchanged. Select the status filter to see
 other stages; search serial lookup by customer name, phone or serial number.
-
