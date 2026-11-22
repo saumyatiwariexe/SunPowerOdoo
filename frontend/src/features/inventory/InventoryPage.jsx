@@ -3,17 +3,33 @@ import { api } from '../../app/api'
 import { Collection } from '../../app/RecordPage'
 export default function InventoryPage() {
   const [low, setLow] = useState(false)
+  const [search, setSearch] = useState('')
+  const [searchDraft, setSearchDraft] = useState('')
+  const [receipt, setReceipt] = useState(null)
+  const [receivedProduct, setReceivedProduct] = useState(null)
+  const params = new URLSearchParams({ low_stock: low })
+  if (search.trim()) params.set('q', search.trim())
+  if (receivedProduct) params.set('product_id', receivedProduct)
   return (
     <Collection
+      key={params.toString()}
       title="Stock"
-      path={'/stock?low_stock=' + low}
+      path={'/stock?' + params}
       empty="No stock matches this view."
       tools={
+        <>
+        {receipt && <p role="status" className="stock-receipt">Received <strong>{receipt.added_qty}</strong> unit(s) for product #{receipt.product_id}. New on-hand balance: <strong>{receipt.new_on_hand}</strong>.</p>}
         <div className="tools">
-          <button className="filter" aria-pressed={low} onClick={() => setLow(!low)}>
+          <form className="search-box" role="search" onSubmit={e => { e.preventDefault(); setSearch(searchDraft); setReceivedProduct(null) }}>
+            <input type="search" aria-label="Search stock by name or SKU" placeholder="Search product name or SKU" value={searchDraft} onChange={e => setSearchDraft(e.target.value)} />
+            <button type="submit">Search</button>
+          </form>
+          <button className="filter" aria-pressed={low} onClick={() => { setLow(!low); setReceivedProduct(null) }}>
             Low stock only
           </button>
+          {receivedProduct && <button className="button" onClick={() => setReceivedProduct(null)}>Show all stock</button>}
         </div>
+        </>
       }
       columns={[
         ['id', 'ID'],
@@ -39,6 +55,13 @@ export default function InventoryPage() {
               .map((x) => x.trim())
               .filter(Boolean),
           }),
+        onDone: result => {
+          setReceipt(result)
+          setSearch('')
+          setSearchDraft('')
+          setLow(false)
+          setReceivedProduct(result.product_id)
+        },
       }}
     />
   )

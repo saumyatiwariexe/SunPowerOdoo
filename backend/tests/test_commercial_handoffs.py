@@ -650,3 +650,26 @@ def test_order_choices_include_customer_reference_and_pagination(workspace):
     assert stage.client.get(f"{API}/orders/options", params={"page_size": 1, "page": 2}).json()["data"][0]["id"] == first
     stage.state.actor = stage.actors["support"]
     assert stage.client.get(f"{API}/orders/options").status_code == 403
+
+def test_stock_receipt_persists_and_focus_filter_finds_received_product(workspace):
+    from app.modules.catalog.models import Product
+    from app.modules.inventory.models import StockMovement
+    stage = workspace
+    stage.state.actor = stage.actors['warehouse']
+    with Session(stage.engine) as db:
+        product = db.scalar(select(Product).where(Product.sku == 'SAFETY'))
+        product_id, before = product.id, product.on_hand
+    receipt = stage.client.post(f'{API}/stock/receive', json={
+        'product_id': product_id, 'qty': 45, 'purchase_cost_paise': 100, 'serial_numbers': []})
+    assert receipt.status_code == 200
+    assert receipt.json()['data']['new_on_hand'] == before + 45
+    response = stage.client.get(f'{API}/stock', params={'product_id': product_id})
+    assert response.status_code == 200
+    assert response.json()['meta']['total'] == 1
+    assert response.json()['data'][0]['id'] == product_id
+    assert response.json()['data'][0]['on_hand'] == before + 45
+    with Session(stage.engine) as db:
+        assert db.get(Product, product_id).on_hand == before + 45
+        movement = db.scalar(select(StockMovement).where(StockMovement.product_id == product_id))
+        assert movement.qty == 45
+    assert stage.client.get(f'{API}/stock', params={'product_id': -1}).status_code == 400
