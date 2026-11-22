@@ -673,3 +673,36 @@ def test_stock_receipt_persists_and_focus_filter_finds_received_product(workspac
         movement = db.scalar(select(StockMovement).where(StockMovement.product_id == product_id))
         assert movement.qty == 45
     assert stage.client.get(f'{API}/stock', params={'product_id': -1}).status_code == 400
+
+
+def test_serial_tracked_receipts_generate_unique_searchable_asset_numbers(workspace):
+    from app.modules.catalog.models import Product
+    from app.modules.inventory.models import SerialUnit
+
+    stage = workspace
+    stage.state.actor = stage.actors['warehouse']
+    with Session(stage.engine) as db:
+        product = db.scalar(select(Product).where(Product.sku == 'PANEL-500'))
+        product_id = product.id
+        before = product.on_hand
+    payload = {'product_id': product_id, 'qty': 2, 'purchase_cost_paise': 100}
+    first = stage.client.post(f'{API}/stock/receive', json=payload)
+    second = stage.client.post(f'{API}/stock/receive', json=payload)
+    assert first.status_code == second.status_code == 200
+    numbers = first.json()['data']['serial_numbers'] + second.json()['data']['serial_numbers']
+    assert len(set(numbers)) == 4
+    assert all(number.startswith(f'SP-{product_id:05d}-') for number in numbers)
+    listed = stage.client.get(f'{API}/stock/serials', params={'product_id': product_id})
+    assert listed.status_code == 200
+    assert set(numbers).issubset({r['serial_no'] for r in listed.json()['data']})
+    assert stage.client.get(f'{API}/stock/serials', params={'product_id': 999999}).status_code == 404
+    with Session(stage.engine) as db:
+        assert db.get(Product, product_id).on_hand == before + 4
+        assert set(db.scalars(select(SerialUnit.serial_no).where(SerialUnit.serial_no.in_(numbers)))) == set(numbers)
+        assert all(row.status == 'IN_STOCK' for row in db.scalars(select(SerialUnit).where(SerialUnit.serial_no.in_(numbers))))
+    manual = stage.client.post(f'{API}/stock/receive', json={**payload, 'qty': 1,
+        'serial_numbers': ['MANUFACTURER-001']})
+    assert manual.status_code == 200
+    assert manual.json()['data']['serial_numbers'] == ['MANUFACTURER-001']
+    partial = stage.client.post(f'{API}/stock/receive', json={**payload, 'serial_numbers': ['ONLY-ONE']})
+    assert partial.status_code == 409

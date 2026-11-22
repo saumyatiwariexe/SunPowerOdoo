@@ -31,3 +31,14 @@ def post_receive_stock(
     res = service.receive_stock(db, payload)
     db.commit()
     return {"data": res}
+
+
+@router.get("/stock/serials")
+def get_product_serials(
+    product_id: int = Query(gt=0),
+    paging: Pagination = Depends(),
+    db: Session = Depends(get_db),
+    _user=Depends(require_roles("WAREHOUSE", "DIRECTOR", "SALES", "SUPPORT")),
+):
+    rows, total = service.list_serials(db, paging, product_id)
+    return {"data": rows, "meta": paging.meta(total)}

@@ -1,3 +1,5 @@
+from secrets import token_hex
+
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -39,6 +41,15 @@ def list_stock(db: Session, paging: Pagination, q: str | None = None, low_stock_
     return result, total
 
 
+def list_serials(db: Session, paging: Pagination, product_id: int) -> tuple[list[dict], int]:
+    if db.get(Product, product_id) is None:
+        raise AppError("NOT_FOUND", "Product not found", 404)
+    stmt = select(SerialUnit).where(SerialUnit.product_id == product_id)
+    total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+    rows = db.scalars(stmt.order_by(SerialUnit.id.desc()).offset(paging.offset).limit(paging.page_size))
+    return [{"serial_no": row.serial_no, "status": row.status} for row in rows], total
+
+
 def receive_stock(db: Session, payload: StockReceiveIn) -> dict:
     product = db.scalar(select(Product).where(Product.id == payload.product_id).with_for_update())
     if not product:
@@ -47,6 +58,8 @@ def receive_stock(db: Session, payload: StockReceiveIn) -> dict:
     cleaned_serials = [s.strip() for s in payload.serial_numbers if s.strip()]
 
     if product.tracks_serial:
+        if not cleaned_serials:
+            cleaned_serials = [f"SP-{product.id:05d}-{token_hex(6).upper()}" for _ in range(payload.qty)]
         if len(cleaned_serials) != payload.qty:
             raise AppError(
                 "RULE_VIOLATION",
@@ -89,4 +102,5 @@ def receive_stock(db: Session, payload: StockReceiveIn) -> dict:
         if constraint == "ix_serial_units_serial_no" or "UNIQUE constraint failed: serial_units.serial_no" in str(exc.orig):
             raise AppError("DUPLICATE_SERIAL", "A received serial number is already in use.", 409) from exc
         raise
-    return {"product_id": product.id, "added_qty": payload.qty, "new_on_hand": product.on_hand}
+    return {"product_id": product.id, "added_qty": payload.qty,
+            "new_on_hand": product.on_hand, "serial_numbers": cleaned_serials}
