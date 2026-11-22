@@ -91,3 +91,31 @@ the new controls and Saumya's existing Lead #6 in the unchanged `sunpower` datab
 8. **Release risk:** merging or deploying this branch remains a separate action.
 9. **Data risk:** seeding and rehearsing write records. Use a disposable database.
 10. **Demo setup:** use the release branch and its matching frontend/API pair when rehearsing.
+
+## Active demo repairs — 22 November 2026
+
+| ID | Severity | Module / owner | Reproduction | Status | Commit |
+| --- | --- | --- | --- | --- | --- |
+| DEMO-01 | P0 | Seed / D | After bulk seeding, log in as standard crew or surveyor: completed history dominates and crew has no assigned work. | fixed: additive 16-project pipeline, no reset | 23e410a |
+| DEMO-02 | P1 | Lookup / B,C | Enter a lowercase serial or formatted phone; no way to discover an equipment identifier. | fixed: normalized exact lookup and customer/equipment search | 23e410a |
+| DEMO-03 | P1 | Tickets / C | Open create-ticket dialog without knowing a serial; existing issue text cannot be corrected. | fixed: database equipment picker and editable open/in-progress issue details | 23e410a |
+| DEMO-04 | P2 | Installs, surveys / C | Lists show IDs without site context and completed history hides work. | fixed: customer/site/assignee names and status filters | 23e410a |
+| DEMO-05 | P2 | Leads, quotes, deliveries / D,A,B | Lead requirements and quote details lack edit controls; pick list requires memorized serials. | fixed: field editors and available-stock selector | 23e410a |
+
+Validation: 50 backend tests passed on an isolated test database; Vite production
+build passed. No lint task is configured. The new regression covers idempotent
+active data, role queues, lookup permissions, case/phone lookup, stock selection,
+duplicate-scan rejection, ticket editing, resolution, confirmation and closure.
+Chrome UI verification confirmed the standard crew's scheduled jobs, named job
+information with Start installation, and populated serial lookup results.
+
+1. Added 16 fictional active projects without deleting existing customer data.
+2. Standard crew has scheduled, in-progress and completed work.
+3. Standard surveyor has scheduled visits and a submitted survey awaits review.
+4. Sales and warehouse have quotes, orders and deliveries at actionable stages.
+5. Support has assigned open, in-progress and resolved tickets.
+6. Added searchable equipment and editable lead, quote and ticket details.
+7. Retained required installation proof and ticket confirmation rules.
+8. Risk: this pass did not manually exercise every role on every mobile screen.
+9. Risk: old bulk history remains synthetic; use the named active projects for the demo.
+10. Risk: rehearsal advances state; the additive command preserves progress rather than resetting it.
