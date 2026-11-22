@@ -15,7 +15,7 @@ export async function recordOptions(kind) {
   if (kind === 'products') {
     return (await allRows('/products')).filter((p) => p.category !== 'SERVICE').map((p) => ({
       value: p.id, label: `${p.name} · ${p.sku}`,
-      detail: `${p.on_hand} in stock · ${p.tracks_serial ? 'Serial numbers required' : 'Quantity only'}`,
+      detail: `${p.on_hand} in stock · ${p.tracks_serial ? 'Serials auto-generated if blank' : 'Quantity only'}`,
     }))
   }
   if (kind === 'packages') {
