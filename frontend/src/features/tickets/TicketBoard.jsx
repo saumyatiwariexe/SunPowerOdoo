@@ -184,15 +184,14 @@ export default function TicketBoard() {
           <ActionForm
             primary
             submit="Create ticket"
-            initial={{ serial_no: params.get('serial') || '', assigned_to_id: mine ? currentUser.id : undefined }}
+              initial={{ assigned_to_id: mine ? currentUser.id : undefined }}
             fields={[
-              { name: 'serial_no', label: 'Equipment serial number', maxLength: 100 },
               { name: 'fault_code', label: 'Issue category', options: ['NO_POWER', 'LOW_GENERATION', 'INVERTER_FAULT', 'BATTERY_FAULT', 'WIRING', 'MONITORING', 'OTHER'] },
               { name: 'description', label: 'Issue description', type: 'textarea', maxLength: 2000 },
               { name: 'priority', label: 'Priority', options: priorities, value: 'NORMAL' },
               { name: 'assigned_to_id', label: 'Assigned staff', lookup: 'assignees', optional: true, hint: 'Choose who owns this repair, or leave it unassigned.' },
             ]}
-            action={(v) => api.post('/tickets', v)}
+              action={(v) => api.post('/tickets', { ...v, serial_no: params.get('serial') })}
             onDone={(t) => {
               setRevision((v) => v + 1)
               openTicket(t.id)
