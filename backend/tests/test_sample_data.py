@@ -20,7 +20,7 @@ def test_sample_cohort_covers_every_table_and_is_repeatable():
     Base.metadata.create_all(engine)
     with Session(engine) as db, db.begin():
         first = add_sample_data(db, "throwaway-test-password")
-        assert len(first) == 30
+        assert len(first) == 31
         assert all(count >= TARGET for count in first.values())
 
         order = db.scalar(select(Order).where(Order.number == "ORD-SMP-0001"))

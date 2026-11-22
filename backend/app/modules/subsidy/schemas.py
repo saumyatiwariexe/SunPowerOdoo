@@ -10,6 +10,8 @@ class SubsidyClaimOut(BaseModel):
 
     id: int
     order_id: int
+    order_number: str | None = None
+    customer_name: str | None = None
     scheme: str
     status: SubsidyStatus
     amount_paise: int

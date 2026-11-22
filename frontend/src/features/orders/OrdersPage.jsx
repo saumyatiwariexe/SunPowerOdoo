@@ -1,9 +1,11 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api, formatPaise } from '../../app/api'
 import { Facts } from '../../app/records'
 import { Collection, RecordDetail, recordLink } from '../../app/RecordPage'
 import { PaymentForm } from '../invoices/InvoicesPage'
 import ActionForm from '../../app/ActionForm'
+import CustomerPayments from '../public/CustomerPayments'
 export function OrdersPage() {
   return (
     <Collection
@@ -35,6 +37,8 @@ export function OrderDetail() {
               ['Received', formatPaise(r.paid_paise)],
             ]}
           />
+          <OrderConnections orderId={r.id} status={r.status} />
+          <CustomerPayments kind="orders" id={r.id} staff onChange={reload} />
           <PaymentForm path={path} reload={reload} />
           {r.status === 'DRAFT' && r.paid_paise < r.advance_min_paise && (
             <p>Receive {formatPaise(r.advance_min_paise - r.paid_paise)} more to confirm this order.</p>
@@ -51,4 +55,15 @@ export function OrderDetail() {
       )}
     </RecordDetail>
   )
+}
+
+function OrderConnections({ orderId, status }) {
+  const [data, setData] = useState(null)
+  useEffect(() => { api.get(`/orders/${orderId}/connections`).then(r => setData(r.data)).catch(() => setData(null)) }, [orderId, status])
+  if (!data) return null
+  return <section><p>Customer: <strong>{data.customer_name}</strong></p><div className="tools">
+    {data.delivery_id && <Link className="button" to={`/deliveries/${data.delivery_id}`}>View delivery</Link>}
+    {data.invoice_id && <Link className="button" to={`/invoices/${data.invoice_id}`}>View invoice</Link>}
+    {data.subsidy_claim_id && <Link className="button" to={`/subsidy/${data.subsidy_claim_id}`}>View subsidy claim</Link>}
+  </div></section>
 }

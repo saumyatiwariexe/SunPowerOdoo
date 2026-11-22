@@ -1,11 +1,12 @@
 import React from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api, formatPaise } from '../../app/api'
 import { useAuth } from '../../app/AuthContext'
 import { hasRole } from '../../app/navigation'
 import ActionForm from '../../app/ActionForm'
 import { DataTable, Facts } from '../../app/records'
 import { Collection, RecordDetail, recordLink, moneyLines } from '../../app/RecordPage'
+import CustomerPayments from '../public/CustomerPayments'
 export function PaymentForm({ path, reload }) {
   return (
     <details className="no-print">
@@ -43,6 +44,7 @@ export function InvoicesPage() {
       columns={[
         ['number', 'Invoice', recordLink('/invoices', 'Invoice')],
         ['customer_name', 'Customer'],
+        ['order_id', 'Order', r => r.order_id ? <Link className="text-link" to={`/orders/${r.order_id}`}>View order</Link> : 'Service ticket'],
         ['total_paise', 'Total'],
         ['balance_paise', 'Balance'],
         ['status', 'Status'],
@@ -51,6 +53,7 @@ export function InvoicesPage() {
   )
 }
 export function InvoiceDetail() {
+  const { currentUser } = useAuth()
   return (
     <RecordDetail title="Invoices" base="/invoices" singular="Invoice" print>
       {(r, path, reload) => (
@@ -58,7 +61,9 @@ export function InvoiceDetail() {
           <Facts
             items={[
               ['Billed to', r.customer?.name],
+              ['Phone', r.customer?.phone],
               ['Address', r.customer?.address],
+              ['Order', r.order_id ? <Link className="text-link" to={`/orders/${r.order_id}`}>View order</Link> : 'Service ticket'],
               ['Issued', new Date(r.issued_at).toLocaleDateString('en-IN')],
               ['Invoice total', formatPaise(r.total_paise)],
               ['Paid', formatPaise(r.paid_paise)],
@@ -77,7 +82,8 @@ export function InvoiceDetail() {
             ]}
             empty="No payments recorded."
           />
-          {r.balance_paise > 0 && <PaymentForm path={path} reload={reload} />}
+            {(hasRole(currentUser, 'SALES') || hasRole(currentUser, 'DIRECTOR')) && <CustomerPayments kind="invoices" id={r.id} staff onChange={reload} />}
+            {r.balance_paise > 0 && <PaymentForm path={path} reload={reload} />}
         </>
       )}
     </RecordDetail>

@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.modules.users.schemas import LoginRequest, StaffEmail
+from typing import Literal
 
 
 class InviteRequest(BaseModel):
@@ -28,3 +29,26 @@ class ServiceRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     serial_no: str = Field(min_length=1, max_length=100)
     description: str = Field(min_length=10, max_length=2000)
+
+
+class AcceptQuote(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    accepted: Literal[True]
+
+
+class PaymentReportRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    amount_paise: int = Field(strict=True, gt=0, le=9_007_199_254_740_991)
+    method: Literal["UPI", "BANK"]
+    reference: str = Field(min_length=3, max_length=100)
+
+    @field_validator("reference")
+    @classmethod
+    def normalize_reference(cls, value):
+        return value.upper()
+
+
+class PaymentReview(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    decision: Literal["VERIFIED", "REJECTED"]
+    note: str = Field(min_length=3, max_length=500)

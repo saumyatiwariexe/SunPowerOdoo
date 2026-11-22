@@ -15,6 +15,7 @@ from dateutil.relativedelta import relativedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from app.modules.portal.seed import seed_sample_accounts
+from app.modules.portal.models import CustomerPaymentReport
 
 import app.models_registry  # noqa: F401
 from app.core.db import Base, get_engine
@@ -47,6 +48,21 @@ def counts(db: Session) -> dict[str, int]:
             for table in Base.metadata.sorted_tables}
 
 
+def seed_sample_payment_reports(db: Session) -> None:
+    existing = set(db.scalars(select(CustomerPaymentReport.reference).where(
+        CustomerPaymentReport.reference.like("SMP-PAY-%"))))
+    rows = db.execute(select(Payment, Order).join(Order, Order.id == Payment.order_id)
+                      .where(Payment.reference.like("SMP-PAY-%"))).all()
+    for payment, order in rows:
+        if payment.reference not in existing:
+            db.add(CustomerPaymentReport(customer_id=order.customer_id, order_id=order.id,
+                amount_paise=payment.amount_paise, method=payment.method,
+                reference=payment.reference, status="VERIFIED", payment_id=payment.id,
+                reviewed_by_id=payment.received_by_id,
+                review_note="Confirmed in sample bank ledger"))
+    db.flush()
+
+
 def delivery_time(i: int, now: datetime) -> datetime:
     return now - (relativedelta(months=27) + timedelta(days=i) if i % 3 == 0
                   else timedelta(days=TARGET + 1 - i))
@@ -66,6 +82,7 @@ def add_sample_data(db: Session, password: str) -> dict[str, int]:
                 lead.created_at = delivery_time(index, now) - timedelta(days=10)
         db.flush()
         seed_sample_accounts(db, password)
+        seed_sample_payment_reports(db)
         result = counts(db)
         short = {name: count for name, count in result.items() if count < TARGET}
         if short:
@@ -321,6 +338,7 @@ def add_sample_data(db: Session, password: str) -> dict[str, int]:
     db.flush()
 
     seed_sample_accounts(db, password)
+    seed_sample_payment_reports(db)
     result = counts(db)
     short = {name: count for name, count in result.items() if count < TARGET}
     if short:

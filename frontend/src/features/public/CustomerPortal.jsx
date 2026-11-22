@@ -5,6 +5,8 @@ import { api, formatPaise } from '../../app/api'
 import { DataTable, Facts, Status } from '../../app/records'
 import Field from '../../app/components/Field'
 import { human } from '../../app/navigation'
+import ActionForm from '../../app/ActionForm'
+import CustomerPayments from './CustomerPayments'
 
 const date = (value) => value ? new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'To be scheduled'
 
@@ -30,6 +32,13 @@ export default function CustomerPortal() {
       </nav>
       <p className="customer-limit">Showing your latest 50 projects, documents and requests, and up to 100 equipment units.</p>
       {tab === 'projects' && <div className="customer-sections">
+        {data.quotes.some(q => q.status === 'SENT') && <section><h2>Quotes ready for your decision</h2>
+          {data.quotes.filter(q => q.status === 'SENT').map(q => <article className="customer-project" key={q.id}>
+            <div className="section-line"><h3>{q.number}</h3><strong>{formatPaise(q.total_paise)}</strong></div>
+            <p>Review the equipment and pricing before accepting. Valid until {q.valid_until}.</p>
+            <Link className="button primary" to={`/customer/documents/quotes/${q.id}`}>Review and accept quote</Link>
+          </article>)}
+        </section>}
         <section><h2>Your enquiries</h2>{!data.projects.length && <p className="state">No enquiries are linked to your account yet. <Link to="/enquiry">Request a quote</Link>.</p>}
           {data.projects.map((project) => <article className="customer-project" key={project.id}>
             <div className="section-line"><h3>{project.requested_kw} kW solar enquiry</h3><Status value={project.status} /></div>
@@ -42,6 +51,8 @@ export default function CustomerPortal() {
             <div className="section-line"><h3>{order.number}</h3><Status value={order.status} /></div>
             <Facts items={[
               ['Order total', formatPaise(order.total_paise)],
+              ['Verified advance', formatPaise(order.paid_paise)],
+              ['Minimum advance', formatPaise(order.advance_min_paise)],
               ['Delivery', order.delivery ? human(order.delivery.status) : 'Awaiting confirmation'],
               ['Installation', order.installation ? human(order.installation.status) : 'Awaiting scheduling'],
               ['Visit starts', date(order.installation?.scheduled_start)],
@@ -49,6 +60,10 @@ export default function CustomerPortal() {
               ['System size', order.installation?.system_kw ? `${order.installation.system_kw} kW` : 'Pending'],
               ['Accepted by', order.installation?.signed_by_name || 'Pending'],
             ]} />
+            {order.status === 'DRAFT' && <p className="state">Your quote is accepted. The installation schedule appears after the advance is verified and our team confirms your order.</p>}
+            {order.invoice_id && <p><Link className="text-link" to={`/customer/documents/invoices/${order.invoice_id}`}>View invoice</Link></p>}
+            {order.subsidy && <p>Subsidy claim: {human(order.subsidy.status)} · {order.subsidy.scheme} · {formatPaise(order.subsidy.amount_paise)}</p>}
+            <details><summary>View payments / report a payment</summary><CustomerPayments kind="orders" id={order.id} /></details>
             {order.installation?.accepted_at && <button className="button no-print" onClick={() => window.print()}>Print installation summary</button>}
           </article>)}
         </section>
@@ -56,6 +71,7 @@ export default function CustomerPortal() {
       {tab === 'documents' && <div className="customer-sections">
         <section><h2>Quotes</h2><DataTable rows={data.quotes} columns={[
           ['number', 'Quote', r => <Link className="text-link" to={`/customer/documents/quotes/${r.id}`}>{r.number}</Link>], ['status', 'Status'], ['total_paise', 'Total'], ['valid_until', 'Valid until'],
+          ['action', 'Next step', r => <Link className="text-link" to={`/customer/documents/quotes/${r.id}`}>{r.status === 'SENT' ? 'Review and accept' : 'View quote'}</Link>],
         ]} empty="Your issued quotes will appear here." /></section>
         <section><h2>Invoices & payments</h2><DataTable rows={data.invoices} columns={[
           ['number', 'Invoice', r => <Link className="text-link" to={`/customer/documents/invoices/${r.id}`}>{r.number}</Link>], ['status', 'Status'], ['total_paise', 'Total'], ['paid_paise', 'Paid'],
@@ -149,7 +165,8 @@ export function CustomerDocument() {
   const { kind, id } = useParams()
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
-  useEffect(() => { setData(null); setError(''); api.get(`/customer/documents/${kind}/${id}`).then(r => setData(r.data)).catch(e => setError(e.message)) }, [kind, id])
+  const [acceptedOrder, setAcceptedOrder] = useState(null)
+  useEffect(() => { setData(null); setError(''); setAcceptedOrder(null); api.get(`/customer/documents/${kind}/${id}`).then(r => setData(r.data)).catch(e => setError(e.message)) }, [kind, id])
   return <PublicFrame><section className="customer-portal customer-document">
     <Link className="back no-print" to="/customer">← My solar</Link>
     {error ? <p role="alert" className="state error">{error} <Link to="/customer">Return to your account</Link></p> : !data ? <p role="status">Loading document…</p> : <>
@@ -160,6 +177,15 @@ export function CustomerDocument() {
       ]} />
       <DataTable rows={data.lines} columns={[[ 'description', 'Description'], ['qty', 'Quantity'], ['unit_price_paise', 'Unit price'], ['line_paise', 'Amount']]} />
       {data.subsidy_paise > 0 && <p>Subsidy adjustment: {formatPaise(data.subsidy_paise)}</p>}
+      {kind === 'quotes' && data.status === 'SENT' && <section className="customer-payment-panel no-print">
+        <h2>Ready to go ahead?</h2><p>Accepting this quote creates your order. The team will confirm it and arrange delivery and installation once the required advance has been verified.</p>
+        <ActionForm primary submit={`Accept quote · ${formatPaise(data.total_paise)}`}
+          action={() => api.post(`/customer/quotes/${id}/accept`, { accepted: true })}
+          onDone={order => { setAcceptedOrder(order); setData(d => ({ ...d, status: 'ACCEPTED', order_id: order.id })) }} />
+      </section>}
+      {acceptedOrder && <p role="status">Quote accepted. Order {acceptedOrder.number} is ready. Minimum advance: {formatPaise(acceptedOrder.advance_min_paise)}.</p>}
+      {kind === 'quotes' && data.status === 'ACCEPTED' && data.order_id && <CustomerPayments kind="orders" id={data.order_id} />}
+      {kind === 'invoices' && <CustomerPayments kind="invoices" id={data.id} />}
     </>}
   </section></PublicFrame>
 }

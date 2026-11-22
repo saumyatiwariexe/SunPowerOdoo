@@ -1671,3 +1671,7 @@ details[open] > summary {
 @media screen {
   .stock-receipt { margin-block: 16px; padding: 14px 18px; border: 1px solid #a9d4cb; border-radius: 8px; color: #205d50; background: #edf7f3; line-height: 1.6; }
 }
+.customer-payment-panel { margin-block: 1rem; padding: clamp(1rem, 3vw, 1.5rem); border: 1px solid var(--border, #ded8dd); border-radius: 12px; background: var(--surface, #fff); }
+.customer-payment-panel > p { line-height: 1.6; max-width: 72ch; }
+.customer-payment-panel details { margin-block: 1rem; }
+.customer-payment-panel summary { cursor: pointer; padding-block: .75rem; font-weight: 600; }

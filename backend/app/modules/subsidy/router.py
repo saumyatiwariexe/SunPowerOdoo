@@ -9,6 +9,17 @@ from app.core.pagination import Pagination
 from app.modules.subsidy import service
 from app.modules.subsidy.schemas import SubsidyClaimOut, SubsidyClaimUpdate
 from app.modules.users.models import Role, User
+from app.modules.orders.models import Order
+from app.modules.users.models import Customer
+
+
+def claim_read(db: Session, claim: service.SubsidyClaim) -> SubsidyClaimOut:
+    order = db.get(Order, claim.order_id)
+    customer = db.get(Customer, order.customer_id) if order else None
+    return SubsidyClaimOut.model_validate(claim).model_copy(update={
+        "order_number": order.number if order else None,
+        "customer_name": customer.name if customer else None,
+    })
 
 router = APIRouter(prefix="/subsidy", tags=["subsidy"])
 
@@ -23,7 +34,7 @@ def list_claims(
     status: str | None = None,
 ) -> dict:
     rows, total = service.list_claims(db, page=pg.page, page_size=pg.page_size, status=status)
-    return {"data": [SubsidyClaimOut.model_validate(r) for r in rows], "meta": pg.meta(total)}
+    return {"data": [claim_read(db, r) for r in rows], "meta": pg.meta(total)}
 
 
 @router.get("/{claim_id}", response_model=dict)
@@ -33,7 +44,7 @@ def get_claim(
     actor: Annotated[User, Depends(DirectorOrSales)],
 ) -> dict:
     claim = service.get_claim(db, claim_id)
-    return {"data": SubsidyClaimOut.model_validate(claim)}
+    return {"data": claim_read(db, claim)}
 
 
 @router.patch("/{claim_id}", response_model=dict)
@@ -46,4 +57,4 @@ def update_claim(
     claim = service.update_claim(db, claim_id, body)
     db.commit()
     db.refresh(claim)
-    return {"data": SubsidyClaimOut.model_validate(claim)}
+    return {"data": claim_read(db, claim)}

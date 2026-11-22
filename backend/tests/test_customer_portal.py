@@ -218,3 +218,118 @@ def test_existing_activation_link_still_works(portal):
     assert client.post('/api/v1/customer/auth/activate', json={'token': token, 'password': PASSWORD}).status_code == 200
     assert client.post('/api/v1/customer/auth/activate', json={'token': token, 'password': PASSWORD}).status_code == 400
     assert client.get('/api/v1/customer/overview').status_code == 200
+
+
+def test_customer_accepts_owned_quote_once_and_checks_state(portal):
+    from sqlalchemy import func
+    client, _, engine, _ = portal
+    path = '/api/v1/customer/quotes/1/accept'
+    assert client.post(path, json={'accepted': True}).status_code == 401
+    onboard(portal)
+    assert client.post('/api/v1/customer/quotes/2/accept', json={'accepted': True}).status_code == 404
+    assert client.post(path, json={'accepted': False}).status_code == 400
+    with Session(engine) as db:
+        # Remove the fixture's pre-existing order to exercise actual conversion.
+        db.delete(db.scalar(select(Invoice).where(Invoice.order_id == 1)))
+        db.delete(db.get(Order, 1)); db.commit()
+    first = client.post(path, json={'accepted': True})
+    assert first.status_code == 200
+    assert first.json()['data']['advance_min_paise'] == 3000
+    assert client.post(path, json={'accepted': True}).json() == first.json()
+    with Session(engine) as db:
+        assert db.get(Quote, 1).status == 'ACCEPTED'
+        assert db.scalar(select(func.count()).select_from(Order).where(Order.quote_id == 1)) == 1
+        db.get(Quote, 1).status = 'SENT'
+        db.get(Quote, 1).valid_until = date.today() - timedelta(days=1)
+        db.commit()
+    assert client.post(path, json={'accepted': True}).status_code == 409
+    with Session(engine) as db:
+        db.get(Quote, 1).status = 'DRAFT'; db.commit()
+    assert client.post(path, json={'accepted': True}).status_code == 409
+
+
+def test_payment_report_requires_staff_verification_and_is_idempotent(portal):
+    from app.modules.billing.models import Payment
+    from app.modules.portal.models import CustomerPaymentReport
+    client, settings, engine, _ = portal
+    path = '/api/v1/customer/orders/1/payment-reports'
+    payload = {'amount_paise': 3000, 'method': 'UPI', 'reference': 'test-utr-001'}
+    assert client.post(path, json=payload).status_code == 401
+    onboard(portal)
+    assert client.post('/api/v1/customer/orders/2/payment-reports', json=payload).status_code == 404
+    assert client.get('/api/v1/customer/orders/2/payment-reports').status_code == 404
+    for invalid, status in (({**payload, 'amount_paise': 30.5}, 400), ({**payload, 'customer_id': 2}, 422), ({**payload, 'reference': '   '}, 400)):
+        assert client.post(path, json=invalid).status_code == status
+    result = client.post(path, json=payload)
+    assert result.status_code == 201
+    report_id = result.json()['data']['id']
+    assert client.post(path, json=payload).status_code == 409
+    summary = client.get(path).json()['data']
+    assert summary['paid_paise'] == 0 and summary['pending_paise'] == 3000
+    assert client.get('/api/v1/customer/invoices/1/payment-reports').json()['data']['reports'][0]['id'] == report_id
+    review = f'/api/v1/customer-management/payment-reports/{report_id}/review'
+    decision = {'decision': 'VERIFIED', 'note': 'Confirmed in bank statement'}
+    assert client.post(review, json=decision).status_code == 401
+    staff(client, settings, 2)
+    assert client.post(review, json=decision).status_code == 403
+    staff(client, settings)
+    assert client.post('/api/v1/orders/1/confirm').status_code == 409
+    assert client.post(review, json=decision).status_code == 200
+    assert client.post(review, json=decision).status_code == 200
+    assert client.post(review, json={'decision': 'REJECTED', 'note': 'Changed mind'}).status_code == 409
+    with Session(engine) as db:
+        payments = list(db.scalars(select(Payment)))
+        assert len(payments) == 1 and payments[0].received_by_id == 1
+        assert db.get(CustomerPaymentReport, report_id).payment_id == payments[0].id
+    summary = client.get(path).json()['data']
+    assert summary['paid_paise'] == 3000 and summary['pending_paise'] == 0
+    assert client.post(path, json={**payload, 'reference': 'other', 'amount_paise': 7001}).status_code == 409
+    result = client.post(path, json={**payload, 'reference': 'failed-utr'})
+    assert result.status_code == 201
+    rejection = f"/api/v1/customer-management/payment-reports/{result.json()['data']['id']}/review"
+    assert client.post(rejection, json={'decision': 'REJECTED', 'note': 'Not received'}).status_code == 200
+    assert client.get(path).json()['data']['paid_paise'] == 3000
+    assert client.get(path).json()['data']['pending_paise'] == 0
+
+
+def test_standalone_invoice_report_and_existing_staff_payment_guard(portal):
+    from app.modules.billing.service import record_payment
+    from app.modules.tickets.models import Ticket
+    client, settings, engine, _ = portal
+    onboard(portal)
+    with Session(engine) as db:
+        ticket = Ticket(number='TKT-PAYMENT', customer_id=1, serial_unit_id=1,
+                        fault_code='OTHER', description='Out of warranty repair', billable=True)
+        db.add(ticket); db.flush()
+        invoice = db.scalar(select(Invoice).where(Invoice.customer_id == 1))
+        invoice.order_id = None; invoice.ticket_id = ticket.id; invoice.total_paise = 5000; db.commit()
+    path = '/api/v1/customer/invoices/1/payment-reports'
+    result = client.post(path, json={'amount_paise': 2000, 'method': 'BANK', 'reference': 'invoice-bank-1'})
+    assert result.status_code == 201
+    staff(client, settings)
+    review = f"/api/v1/customer-management/payment-reports/{result.json()['data']['id']}/review"
+    with Session(engine) as db:
+        record_payment(db, invoice_id=1, amount_paise=2000, method='BANK', reference='invoice-bank-1', user_id=1)
+        db.commit()
+    result = client.post(review, json={'decision': 'VERIFIED', 'note': 'Already received'})
+    assert result.status_code == 409 and result.json()['error']['code'] == 'PAYMENT_ALREADY_RECORDED'
+    assert client.get(path).json()['data']['paid_paise'] == 2000
+
+
+def test_customer_order_shows_installation_only_after_verified_advance_and_confirmation(portal):
+    client, settings, _, _ = portal
+    onboard(portal)
+    before = client.get('/api/v1/customer/overview').json()['data']['orders'][0]
+    assert before['status'] == 'DRAFT' and before['installation'] is None
+    assert before['delivery'] is None and before['invoice_id'] == 1
+    report = client.post('/api/v1/customer/orders/1/payment-reports', json={
+        'amount_paise': 3000, 'method': 'UPI', 'reference': 'install-advance-1'})
+    assert report.status_code == 201
+    staff(client, settings)
+    assert client.post('/api/v1/orders/1/confirm').status_code == 409
+    assert client.post(f"/api/v1/customer-management/payment-reports/{report.json()['data']['id']}/review",
+                       json={'decision': 'VERIFIED', 'note': 'Bank receipt checked'}).status_code == 200
+    assert client.post('/api/v1/orders/1/confirm').status_code == 200
+    after = client.get('/api/v1/customer/overview').json()['data']['orders'][0]
+    assert after['status'] == 'CONFIRMED' and after['installation']['status'] == 'SCHEDULED'
+    assert after['delivery']['status'] == 'PENDING' and after['delivery_id'] is not None
