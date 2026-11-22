@@ -42,8 +42,9 @@ def _media_url(job_id: int, filename: str) -> str:
 
 
 @router.get("")
-def jobs(db: Db, paging: Paging, actor: SchedulingStaff, status: InstallStatus | None = None) -> InstallPage:
-    rows, count = service.list_jobs(db, paging, status=status)
+def jobs(db: Db, paging: Paging, actor: SchedulingStaff, status: InstallStatus | None = None,
+         needs_schedule: bool = False) -> InstallPage:
+    rows, count = service.list_jobs(db, paging, status=status, needs_schedule=needs_schedule)
     return InstallPage(data=[InstallRead.model_validate(row) for row in rows], meta=paging.meta(count))
 
 

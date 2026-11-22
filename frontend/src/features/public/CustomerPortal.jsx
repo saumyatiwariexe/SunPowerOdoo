@@ -54,7 +54,7 @@ export default function CustomerPortal() {
               ['Verified advance', formatPaise(order.paid_paise)],
               ['Minimum advance', formatPaise(order.advance_min_paise)],
               ['Delivery', order.delivery ? human(order.delivery.status) : 'Awaiting confirmation'],
-              ['Installation', order.installation ? human(order.installation.status) : 'Awaiting scheduling'],
+              ['Installation', order.installation ? (order.installation.status === 'SCHEDULED' && !order.installation.scheduled_start ? 'Awaiting crew and visit time' : human(order.installation.status)) : 'Awaiting order confirmation'],
               ['Visit starts', date(order.installation?.scheduled_start)],
               ['Visit ends', date(order.installation?.scheduled_end)],
               ['System size', order.installation?.system_kw ? `${order.installation.system_kw} kW` : 'Pending'],
