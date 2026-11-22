@@ -50,28 +50,31 @@ def invite(db, lead_id, email, actor_id):
     if account is None:
         account = CustomerAccount(customer_id=lead.customer_id, email=email, invited_by_id=actor_id)
         db.add(account)
-    token = secrets.token_urlsafe(32)
+    password = secrets.token_urlsafe(18)
     account.email = email
-    account.invite_hash = hashlib.sha256(token.encode()).hexdigest()
+    account.password_hash = hash_password(password)
+    account.invite_hash = None
     account.invite_expires_at = datetime.now(UTC) + timedelta(hours=24)
     account.invited_by_id = actor_id
     try:
         db.flush()
     except IntegrityError:
         raise AppError("ACCOUNT_CONFLICT", "This email or customer already has a portal account. Check the existing account.", 409) from None
-    return account, token
+    return account, password
 
 
-def send_invite(settings, email, token):
+def send_invite(settings, email, password):
     email_config(settings)
-    link = settings.customer_portal_url.rstrip("/") + "/customer/activate#token=" + token
+    link = settings.customer_portal_url.rstrip("/") + "/customer"
     body = {
         "personalizations": [{"to": [{"email": email}]}],
         "from": {"email": settings.sendgrid_from_email, "name": "SunPower Solutions"},
-        "subject": "Your SunPower customer account invitation",
+        "subject": "Your SunPower customer login details",
         "content": [{"type": "text/plain", "value":
             f"Your SunPower agent has invited you to My solar.\n\nSign-in email: {email}\n"
-            f"Set your password using this one-time link (valid for 24 hours):\n{link}\n\n"
+            f"Password: {password}\nSign in: {link}\n\n"
+            "No password setup or reset is required. Sign in for the first time within 24 hours. "
+            "After your first sign-in, keep using these credentials. If this email expires before you sign in, ask your agent to resend it.\n\n"
             "View your installation, documents, warranties and service requests. "
             "If you were not expecting this invitation, ignore this email.\n"}],
         "tracking_settings": {"click_tracking": {"enable": False, "enable_text": False},
@@ -102,9 +105,16 @@ def activate(db, token, password):
 
 
 def authenticate(db, email, password):
-    account = db.scalar(select(CustomerAccount).where(CustomerAccount.email == email))
-    if not account or not account.activated_at or not account.password_hash or not verify_password(password, account.password_hash):
-        raise AppError("INVALID_CREDENTIALS", "Email or password is incorrect, or the account is not activated.", 401)
+    account = db.scalar(select(CustomerAccount).where(CustomerAccount.email == email).with_for_update())
+    if not account or not account.password_hash or not verify_password(password, account.password_hash):
+        raise AppError("INVALID_CREDENTIALS", "Email or password is incorrect, or the initial login has expired. Ask your agent for help.", 401)
+    if not account.activated_at:
+        if not account.invite_expires_at or account.invite_expires_at <= datetime.now(UTC):
+            raise AppError("INVALID_CREDENTIALS", "Email or password is incorrect, or the initial login has expired. Ask your agent for help.", 401)
+        account.activated_at = datetime.now(UTC)
+        account.invite_hash = None
+        account.invite_expires_at = None
+        db.flush()
     return account
 
 

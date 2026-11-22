@@ -76,7 +76,7 @@ def onboard(portal):
     staff(client, settings)
     assert client.post('/api/v1/customer-management/leads/1/invite', json={'email': 'Client@Example.test'}).status_code == 200
     client.cookies.clear()
-    result = client.post('/api/v1/customer/auth/activate', json={'token': mail[-1][1], 'password': PASSWORD})
+    result = client.post('/api/v1/customer/auth/login', json={'email': 'client@example.test', 'password': mail[-1][1]})
     assert result.status_code == 200
     assert 'httponly' in result.headers['set-cookie'].lower()
     return mail[-1][1]
@@ -89,8 +89,9 @@ def test_agent_invitation_activation_login_and_isolation(portal):
     token = onboard(portal)
     with Session(engine) as db:
         account = db.scalar(select(CustomerAccount))
-        assert account.password_hash != PASSWORD and account.invite_hash is None
-    assert client.post('/api/v1/customer/auth/activate', json={'token': token, 'password': PASSWORD}).status_code == 400
+        assert account.password_hash != token and account.invite_hash is None
+        assert account.activated_at is not None and account.invite_expires_at is None
+    assert client.post('/api/v1/customer/auth/activate', json={'token': 'x' * 32, 'password': PASSWORD}).status_code == 400
     data = client.get('/api/v1/customer/overview').json()['data']
     assert [r['number'] for r in data['quotes']] == ['QT-1']
     assert [r['serial_no'] for r in data['equipment']] == ['SERIAL-1']
@@ -106,7 +107,7 @@ def test_agent_invitation_activation_login_and_isolation(portal):
     assert client.get('/api/v1/auth/me').status_code == 401
     client.post('/api/v1/customer/auth/logout')
     assert client.get('/api/v1/customer/overview').status_code == 401
-    assert client.post('/api/v1/customer/auth/login', json={'email': 'CLIENT@example.test', 'password': PASSWORD}).status_code == 200
+    assert client.post('/api/v1/customer/auth/login', json={'email': 'CLIENT@example.test', 'password': token}).status_code == 200
     assert client.post('/api/v1/customer/auth/login', json={'email': 'client@example.test', 'password': 'wrong'}).status_code == 401
 
 
@@ -127,13 +128,16 @@ def test_invitation_role_state_resend_expiry_and_duplicate_email(portal):
     assert client.post(path, json=payload).status_code == 200
     first = mail[-1][1]
     assert client.post(path, json=payload).status_code == 200
-    assert client.post('/api/v1/customer/auth/activate', json={'token': first, 'password': PASSWORD}).status_code == 400
+    assert client.post('/api/v1/customer/auth/login', json={'email': 'client@example.test', 'password': first}).status_code == 401
     assert client.post('/api/v1/customer-management/leads/2/invite', json=payload).status_code == 409
     with Session(engine) as db:
         account = db.scalar(select(CustomerAccount))
-        assert account.invite_hash != mail[-1][1]
+        assert account.invite_hash is None
+        from app.core.security import verify_password
+        assert verify_password(mail[-1][1], account.password_hash)
+        assert not verify_password(first, account.password_hash)
         account.invite_expires_at = datetime.now(UTC) - timedelta(seconds=1); db.commit()
-    assert client.post('/api/v1/customer/auth/activate', json={'token': mail[-1][1], 'password': PASSWORD}).status_code == 400
+    assert client.post('/api/v1/customer/auth/login', json={'email': 'client@example.test', 'password': mail[-1][1]}).status_code == 401
 
 
 def test_configuration_drafts_validation_and_rate_limit(portal):
@@ -168,7 +172,9 @@ def test_sendgrid_payload_and_failure(portal, monkeypatch):
     auth.send_invite(settings, 'client@example.test', 'one-time-token')
     payload = json.loads(requests[0].data)
     assert payload['personalizations'][0]['to'][0]['email'] == 'client@example.test'
-    assert '/customer/activate#token=one-time-token' in payload['content'][0]['value']
+    assert 'Sign in: https://solar.example.test/customer' in payload['content'][0]['value']
+    assert 'Password: one-time-token' in payload['content'][0]['value']
+    assert '/activate' not in payload['content'][0]['value']
     assert payload['tracking_settings']['click_tracking']['enable'] is False
     def fail(*args, **kwargs): raise HTTPError('https://api.sendgrid.com', 403, 'Denied', {}, None)
     monkeypatch.setattr(auth, 'urlopen', fail)
@@ -177,3 +183,38 @@ def test_sendgrid_payload_and_failure(portal, monkeypatch):
     assert result.status_code == 503
     with Session(engine) as db:
         assert db.scalar(select(CustomerAccount)).activated_at is None
+
+
+def test_generated_password_is_private_and_existing_accounts_are_unchanged(portal):
+    client, settings, engine, mail = portal
+    staff(client, settings)
+    path = '/api/v1/customer-management/leads/1/invite'
+    result = client.post(path, json={'email': 'client@example.test'})
+    assert result.status_code == 200
+    password = mail[-1][1]
+    assert len(password) >= 24
+    assert password not in result.text
+    assert password not in client.get('/api/v1/customer-management/leads/1').text
+    with Session(engine) as db:
+        account = db.scalar(select(CustomerAccount))
+        assert account.activated_at is None
+        assert account.password_hash != password
+    assert client.post('/api/v1/customer/auth/login', json={'email': 'client@example.test', 'password': password}).status_code == 200
+    assert client.post(path, json={'email': 'client@example.test'}).status_code == 409
+    assert client.post('/api/v1/customer/auth/login', json={'email': 'client@example.test', 'password': password}).status_code == 200
+    settings.customer_portal_url = 'http://localhost:5173'
+    status = client.get('/api/v1/customer-management/leads/1').json()['data']
+    assert status['local_only'] is True
+    assert status['login_url'] == 'http://localhost:5173/customer'
+
+
+def test_existing_activation_link_still_works(portal):
+    import hashlib
+    client, settings, engine, mail = portal
+    token = 'legacy-invitation-token-' + 'x' * 32
+    with Session(engine) as db, db.begin():
+        db.add(CustomerAccount(customer_id=1, email='legacy@example.test', invited_by_id=1,
+            invite_hash=hashlib.sha256(token.encode()).hexdigest(), invite_expires_at=datetime.now(UTC) + timedelta(hours=1)))
+    assert client.post('/api/v1/customer/auth/activate', json={'token': token, 'password': PASSWORD}).status_code == 200
+    assert client.post('/api/v1/customer/auth/activate', json={'token': token, 'password': PASSWORD}).status_code == 400
+    assert client.get('/api/v1/customer/overview').status_code == 200
