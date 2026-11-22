@@ -15,7 +15,6 @@ export default function CustomerInvite({ lead }) {
   return <section className="customer-onboarding">
     <h2>Customer portal access</h2>
     {account?.login_url && <p>Customer login: <a className="text-link" href={account.login_url} target="_blank" rel="noreferrer">{account.login_url}</a></p>}
-    {account?.local_only && <p role="status" className="form-error">This address only works on this computer. Set CUSTOMER_PORTAL_URL to your reachable website or tunnel address before emailing a customer on another device.</p>}
     {error ? <p role="alert">{error} <button className="button" onClick={load}>Retry</button></p> : !account ? <p role="status">Checking portal access...</p> : account.status === 'ACTIVE' ? <p>Account active for <strong>{account.email}</strong>. This customer can sign in to My solar.</p> : <>
       <p>{account.status === 'INVITED' ? `An invitation is pending for ${account.email}. Resending generates a new password and replaces the previous one.` : 'Grant access after discussing the enquiry. The customer receives their email, an automatically generated password and the login address. No password setup is required.'}</p>
       {['NEW', 'LOST'].includes(lead.status) ? <p>Contact this lead before inviting them. Lost leads cannot be onboarded.</p> : <ActionForm
