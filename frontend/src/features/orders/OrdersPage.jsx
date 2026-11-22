@@ -59,11 +59,18 @@ export function OrderDetail() {
 
 function OrderConnections({ orderId, status }) {
   const [data, setData] = useState(null)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
   useEffect(() => { api.get(`/orders/${orderId}/connections`).then(r => setData(r.data)).catch(() => setData(null)) }, [orderId, status])
   if (!data) return null
   return <section><p>Customer: <strong>{data.customer_name}</strong></p><div className="tools">
     {data.delivery_id && <Link className="button" to={`/deliveries/${data.delivery_id}`}>View delivery</Link>}
     {data.invoice_id && <Link className="button" to={`/invoices/${data.invoice_id}`}>View invoice</Link>}
+    {!data.invoice_id && status !== 'DRAFT' && <button className="button" disabled={busy} onClick={async () => {
+      setBusy(true); setError('')
+      try { const result = await api.post('/invoices', { order_id: orderId }); setData(d => ({ ...d, invoice_id: result.data.id })) }
+      catch (e) { setError(e.message) } finally { setBusy(false) }
+    }}>{busy ? 'Creating invoice…' : 'Create invoice for this order'}</button>}
     {data.subsidy_claim_id && <Link className="button" to={`/subsidy/${data.subsidy_claim_id}`}>View subsidy claim</Link>}
-  </div></section>
+  </div>{error && <p role="alert" className="form-error">{error}</p>}</section>
 }
