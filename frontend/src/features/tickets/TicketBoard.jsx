@@ -53,6 +53,7 @@ function Queue({ status, query, board, openTicket }) {
         <span>{resource.meta?.total ?? '–'}</span>
       </header>
       <State resource={resource}>
+        <div className="lane-cards">
         {rows.map((t) => (
           <button className="ticket-card" key={t.id} onClick={() => openTicket(t.id)}>
             <span className="ticket-key">
@@ -60,7 +61,7 @@ function Queue({ status, query, board, openTicket }) {
               {t.number}
             </span>
             <strong>{t.description}</strong>
-            <small>{t.customer_name} · {t.serial_no}</small>
+            <small title={t.customer_name}>{t.customer_name}</small>
             <span className="ticket-meta">
               <span className={'priority ' + t.priority}>{human(t.priority)}</span>
               <span>{assignee(t)}</span>
@@ -68,7 +69,10 @@ function Queue({ status, query, board, openTicket }) {
           </button>
         ))}
         {!rows.length && <div className="empty-lane">{params.get('mine') ? 'No tickets assigned to you in this stage.' : 'No tickets in this stage.'}</div>}
+        </div>
+        <div className="lane-pagination">
         <Pager meta={resource.meta} page={page} setPage={setPage} />
+        </div>
       </State>
     </section>
   )

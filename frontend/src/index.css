@@ -1645,3 +1645,26 @@ details[open] > summary {
   .ticket-dialog .facts { gap: 18px; }
   .ticket-workspace .board { grid-template-columns: repeat(4, 85vw); }
 }
+
+/* Fit the ticket board to the workspace instead of clipping its final lane. */
+@media screen {
+  .ticket-workspace .board { grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: stretch; overflow: visible; }
+  .ticket-workspace .lane { display: flex; flex-direction: column; min-width: 0; min-height: 340px; }
+  .ticket-workspace .lane > header { min-height: 42px; flex-shrink: 0; }
+  .lane-cards { display: grid; grid-auto-rows: 172px; align-content: start; gap: 12px; flex: 1; max-height: 540px; overflow-y: auto; scrollbar-width: thin; padding: 2px; }
+  .ticket-workspace .ticket-card { margin: 0; height: 172px; grid-template-rows: 18px 42px 20px 1fr; gap: 8px; overflow: hidden; }
+  .ticket-workspace .ticket-card strong { line-height: 21px; }
+  .ticket-workspace .ticket-card > small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .78rem; }
+  .ticket-workspace .ticket-meta { align-self: end; flex-wrap: nowrap; gap: 8px; }
+  .ticket-workspace .ticket-meta > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lane-pagination { min-height: 52px; padding-top: 10px; }
+  .lane-pagination .pager { margin: 0; justify-content: space-between; gap: 6px; font-size: .72rem; flex-wrap: wrap; }
+  .ticket-workspace .empty-lane { grid-row: auto; padding: 18px 8px; }
+}
+@media screen and (max-width: 1300px) {
+  .ticket-workspace .board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media screen and (max-width: 700px) {
+  .ticket-workspace .board { grid-template-columns: minmax(0, 1fr); }
+  .lane-cards { max-height: 356px; }
+}
